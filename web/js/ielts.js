@@ -1,21 +1,10 @@
 // ===== IELTS sayfası: sekmeler, sınav türü, genel bakış, taktikler, bant hesaplayıcı, yol haritası =====
-// Sabit içerik ielts-data.js içinde. Çalışma alanları (Reading, Listening, Writing, Speaking) ielts-practice.js içinde.
+// Sabit içerik ielts-data.js içinde; ieltsElement ve soru bileşeni quiz.js içinde. Çalışma alanları (Reading, Listening, Writing, Speaking) ielts-practice.js içinde.
 // localStorage: "ielts:profile" { module, current, target, date, minutes, weak, madeAt },
 //               "ielts:roadmap" { işaretlenen görev id'si: true }, "ielts:results" [ { kind, title, score, total, at } ].
 
 const IELTS_TABS = ["genel", "taktik", "yol", "gramer", "reading", "listening", "writing", "speaking"];
 const IELTS_DAY = 24 * 60 * 60 * 1000;
-
-function ieltsElement(tag, className, text) {
-    let element = document.createElement(tag);
-    if (className) {
-        element.className = className;
-    }
-    if (text !== undefined) {
-        element.textContent = text;  // textContent: modelden gelen yazı HTML olarak çalışmaz
-    }
-    return element;
-}
 
 function ieltsRead(key, fallback) {
     try {

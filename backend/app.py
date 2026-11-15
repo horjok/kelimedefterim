@@ -9,6 +9,8 @@ Kelime Defteri Flask uygulaması.
 - /api/grammar?url=<youtube linki> : videodaki gramer konuları (Gemini API, grammar.py).
 - /api/syllables?word=<kelime> : kelimenin heceleri (IPA), "sondan başa" telaffuz alıştırması için.
 - /api/occurrences?word=<kelime> : kelimenin daha önce açılmış videolarda geçtiği cümleler.
+- /api/lesson?topic=<konu> ve /api/lesson/quiz : Gramer bölümü (lessons.py): konu anlatımı ve alıştırma.
+- /api/wordbank : Pekiştir sayfası için seviyeli kelime haznesi (wordbank.py).
 - /api/ielts/* : IELTS bölümü (ielts.py): Reading/Listening setleri, Writing konusu ve değerlendirmesi, Speaking soruları.
 """
 
@@ -17,7 +19,7 @@ from urllib.error import HTTPError
 
 from flask import Flask, abort, jsonify, request, send_from_directory
 
-from . import ielts
+from . import ielts, lessons, wordbank
 from .config import WEB_DIR
 from .gemini import GeminiError
 from .grammar import GrammarError, analyze_grammar
@@ -33,7 +35,7 @@ from .transcripts import (
 )
 from .vocab import build_vocab, translate_sentence
 
-STATIC_TYPES = {".html", ".css", ".js", ".png", ".jpg", ".svg", ".ico", ".webp"}
+STATIC_TYPES = {".html", ".css", ".js", ".json", ".png", ".jpg", ".svg", ".ico", ".webp"}  # .json: yalnızca web/data/ (önbellekler web/ dışında)
 
 app = Flask(__name__, static_folder=None)
 app.json.ensure_ascii = False  # IPA sembolleri JSON'da okunur kalsın
@@ -240,3 +242,40 @@ def ielts_videos():
     videos = [{"videoId": data["videoId"], "title": data.get("title", ""), "lines": len(data["lines"])}
               for data in transcript_cache.values()]
     return jsonify({"videos": sorted(videos, key=lambda video: video["title"].lower())})
+
+
+# ===== Gramer bölümü (genel İngilizce) =====
+
+@app.get("/api/lesson")
+def lesson():
+    """Konunun ayrıntılı anlatımı: ?topic=<anahtar>[&fresh=1]. İlk açılışta Gemini üretir, sonra önbellekten gelir."""
+    return ielts_call(lambda: lessons.get_lesson(request.args.get("topic", ""), request.args.get("fresh") == "1"))
+
+
+@app.post("/api/lesson/quiz")
+def lesson_quiz():
+    """Konunun alıştırması: {"topic": anahtar}."""
+    return ielts_call(lambda: lessons.make_quiz(str(body_value("topic"))))
+
+
+# ===== Pekiştir sayfası: seviyeli kelime haznesi =====
+
+@app.get("/api/wordbank/sources")
+def word_bank_sources():
+    """İçe aktarılmış kelime listesi var mı: {"name": ad, "levels": {"B2": adet, ...}}."""
+    return jsonify(wordbank.list_sources())
+
+
+@app.post("/api/wordbank")
+def word_bank():
+    """Seviyeden rastgele kelimeler: {"level": "B1", "count": 12, "exclude": ["bilinen", "kelimeler"]}."""
+    def action():
+        count = body_value("count", 12)
+        exclude = body_value("exclude", [])
+        return wordbank.get_words(
+            str(body_value("level")),
+            count if isinstance(count, int) and not isinstance(count, bool) else 12,
+            [word for word in exclude if isinstance(word, str)][:3000] if isinstance(exclude, list) else [],
+            str(body_value("topic", "") or ""),  # kelime konusu (web/data/kelime-konulari.json); boş = karışık
+        )
+    return ielts_call(action)

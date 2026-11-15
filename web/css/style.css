@@ -1053,3 +1053,113 @@ textarea.ielts-essay { min-height: 280px; font-size: 16px; line-height: 1.6; }
 .ielts-gram-card .chip.status-learning { background: #FBE6C8; }
 #gramDetail[hidden], #gramPractice[hidden], #gramBody[hidden] { display: none; }
 #gramDetail .grammar-pattern { font-size: 15px; }
+
+/* ===== Gramer sayfası (gramer.js) ===== */
+#grBrowse[hidden], #grLesson[hidden], #grQuizBody[hidden], .gr-foot[hidden] { display: none; }
+.gr-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.gr-tools input { flex: 1 1 220px; }
+#grLevels { flex-wrap: wrap; border-radius: 16px; }
+#grList > .panel, #grLesson > .panel { margin-top: 16px; }
+.gr-card { text-decoration: none; }
+.gr-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.gr-card .gr-chips .chip { margin-top: 0; }
+.chip.gr-level { font-weight: 700; color: var(--ink); }
+.chip.gr-level-A1, .chip.gr-level-A2 { background: #DCFCE7; }
+.chip.gr-level-B1, .chip.gr-level-B2 { background: var(--marker-soft); }
+.chip.gr-level-C1 { background: #FCE7F3; }
+.ielts-gram-card .chip.gr-level-A1, .ielts-gram-card .chip.gr-level-A2 { background: #DCFCE7; }
+.ielts-gram-card .chip.gr-level-B1, .ielts-gram-card .chip.gr-level-B2 { background: var(--marker-soft); }
+.ielts-gram-card .chip.gr-level-C1 { background: #FCE7F3; }
+.ielts-gram-card .chip.status-new { background: var(--primary-soft); }
+.gr-nav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.gr-nav-side { display: flex; gap: 6px; }
+.gr-nav button.mini:disabled { opacity: 0.45; cursor: default; }
+#grCore .grammar-pattern, #grBody .grammar-pattern { font-size: 15px; }
+.gr-example { font-weight: 700; }
+.gr-intro { font-size: 17px; }
+.gr-forms { display: grid; gap: 8px; }
+.gr-form { display: grid; grid-template-columns: 1fr; gap: 4px; padding: 10px 12px; border-radius: 14px; background: var(--ground); }
+.gr-form-name { font-family: var(--font-display); font-weight: 800; }
+.gr-form-body { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.gr-form-body .grammar-pattern { margin: 0 0 4px !important; overflow-wrap: anywhere; }
+.gr-pair { display: flex; flex-direction: column; }
+.gr-en { font-weight: 700; }
+.gr-tr { font-size: 14px; color: var(--ink-soft); }
+.gr-uses { gap: 12px; }
+.gr-rule { display: block; margin-bottom: 2px; }
+.gr-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.gr-foot .lab-note { margin: 0; flex: 1 1 260px; }
+#grBody .ielts-note { margin: 14px 0 0; }
+@media (min-width: 720px) {
+    .gr-form { grid-template-columns: 110px 1fr; align-items: start; }
+}
+
+/* Gramer sayfası: kademe süzgeci, alt başlıklar */
+.gr-credit { margin: 16px 4px 0; }
+.gr-subs { margin-bottom: 0; }
+.gr-sub-title { margin: 14px 0 4px !important; padding: 3px 10px; display: inline-block; border-radius: 8px; background: var(--primary-soft); font-family: var(--font-display); font-weight: 800; font-size: 15px; }
+#grSubs[hidden] { display: none; }
+
+/* Gramer sayfası: konu özeti (uzun özet + Türkçeli örnekler) */
+.gr-summary { font-size: 16.5px; line-height: 1.65; }
+.gr-examples { margin: 4px 0 0; gap: 8px; }
+
+/* ===== Pekiştir sayfası (pekistir.js) ===== */
+#pkStart[hidden], #pkBrowse[hidden], #pkStudy[hidden], #pkStage[hidden], #pkDone[hidden], .pk-meaning[hidden], .pk-feedback[hidden], #pkListen[hidden], #pkHint[hidden], #pkNext[hidden], #pkCardReveal[hidden] { display: none; }
+.pk-levels { flex-wrap: wrap; border-radius: 16px; margin-bottom: 10px; }
+#pekistir .transcript-hint { margin: 8px 0 0; }
+#pekistir .transcript-hint:empty { display: none; }
+.pk-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.pk-dots { display: flex; flex-wrap: wrap; gap: 6px; }
+.pk-dot { min-width: 44px; min-height: 30px; padding: 4px 10px; border-radius: 999px; background: var(--paper); box-shadow: inset 0 0 0 2px var(--rule); font-size: 13px; font-weight: 700; text-align: center; }
+.pk-dot.on { color: #FFFFFF; background: var(--primary); box-shadow: none; }
+.pk-card { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 260px; padding: 28px 20px; text-align: center; border-radius: 22px; }
+.pk-card p { margin: 0; }
+.pk-word { font-family: var(--font-display); font-weight: 900; font-size: clamp(34px, 8vw, 52px); line-height: 1.1; overflow-wrap: anywhere; }
+.pk-meaning { width: 100%; margin-top: 6px; padding-top: 12px; border-top: 1px dashed var(--rule); }
+.pk-tr { font-family: var(--font-display); font-weight: 800; font-size: 22px; color: var(--primary); margin: 0 0 4px !important; }
+.pk-choice { max-width: 560px; margin: 14px auto 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pk-choice button { min-height: 52px; font-size: 16px; box-shadow: var(--press); }
+.pk-choice button:active { transform: translateY(3px); box-shadow: var(--press-down); }
+.pk-choice button.ghost { box-shadow: 0 4px 0 var(--rule); }
+#pkBrowse .study-shortcut, #pkBrowseStatus { max-width: 560px; margin-left: auto !important; margin-right: auto !important; text-align: center; }
+.pk-study-list { display: grid; gap: 12px; margin: 12px 0; }
+.pk-study-item { padding: 12px 14px; border-radius: 16px; background: var(--ground); }
+.pk-study-item p { margin: 0 0 2px; }
+.pk-study-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 10px; margin-bottom: 4px; }
+.pk-study-word { font-family: var(--font-display); font-weight: 900; font-size: 22px; }
+.pk-study-item .chip { margin-top: 6px; }
+.pk-steps { display: flex; flex-wrap: wrap; gap: 6px; }
+.pk-step { padding: 4px 12px; border-radius: 999px; background: var(--paper); box-shadow: inset 0 0 0 2px var(--primary-soft); font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.pk-step.on { color: #FFFFFF; background: var(--primary); box-shadow: none; }
+.pk-step.done { color: #FFFFFF; background: var(--ok); box-shadow: none; }
+.pk-question { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; text-align: center; }
+.pk-question p { margin: 0; }
+.pk-prompt { font-family: var(--font-display); font-weight: 900; font-size: clamp(28px, 7vw, 42px); line-height: 1.15; overflow-wrap: anywhere; }
+.pk-prompt.pk-sentence { font-size: clamp(19px, 4.5vw, 24px); font-weight: 800; line-height: 1.4; }
+.pk-sub { color: var(--ink-soft); }
+#pkListen { align-self: center; }
+.pk-answer { margin-top: 6px; }
+.pk-options { text-align: left; }
+.pk-options .ielts-option { font-size: 17px; font-weight: 700; }
+.pk-options .ielts-option.pk-wrong:disabled { color: #FFFFFF; background: var(--error); }
+.pk-slots, .pk-bank { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.pk-slots { margin-bottom: 14px; }
+.pk-slot, .pk-tile { width: 44px; height: 48px; padding: 0; border-radius: 12px; font: 800 22px var(--font-display); text-transform: lowercase; }
+.pk-slot { color: var(--ink); background: var(--paper); box-shadow: inset 0 0 0 2px var(--rule); }
+.pk-slot.filled { background: var(--marker-soft); box-shadow: inset 0 0 0 2px var(--marker-deep); }
+.pk-slot:hover, .pk-tile:hover { transform: none; }
+.pk-tile { color: #FFFFFF; background: var(--primary); box-shadow: 0 3px 0 var(--primary-deep); }
+.pk-tile:disabled { background: var(--muted); color: transparent; box-shadow: none; cursor: default; }
+.pk-feedback { margin-top: 8px; padding: 10px 14px; border-radius: 14px; text-align: left; }
+.pk-feedback.right { background: #DCFCE7; }
+.pk-feedback.wrong { background: #FEE2E2; }
+.pk-feedback-line { font-size: 17px; }
+.pk-question .ielts-actions { justify-content: center; }
+#pkDone .ielts-actions a.mini { text-decoration: none; }
+@media (min-width: 720px) {
+    .pk-study-list { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+.pk-topic { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; font-weight: 700; }
+.pk-topic[hidden] { display: none; }
+.pk-topic select { min-height: 44px; max-width: 100%; flex: 1 1 220px; }
