@@ -9,6 +9,7 @@ Kelime Defteri Flask uygulaması.
 - /api/grammar?url=<youtube linki> : videodaki gramer konuları (Gemini API, grammar.py).
 - /api/syllables?word=<kelime> : kelimenin heceleri (IPA), "sondan başa" telaffuz alıştırması için.
 - /api/occurrences?word=<kelime> : kelimenin daha önce açılmış videolarda geçtiği cümleler.
+- /api/ielts/* : IELTS bölümü (ielts.py): Reading/Listening setleri, Writing konusu ve değerlendirmesi, Speaking soruları.
 """
 
 from pathlib import Path
@@ -16,7 +17,9 @@ from urllib.error import HTTPError
 
 from flask import Flask, abort, jsonify, request, send_from_directory
 
+from . import ielts
 from .config import WEB_DIR
+from .gemini import GeminiError
 from .grammar import GrammarError, analyze_grammar
 from .ipa import WORD, prepare_ipa, syllabify, token_to_ipa
 from .transcripts import (
@@ -26,6 +29,7 @@ from .transcripts import (
     find_occurrences,
     get_transcript,
     load_transcripts,
+    transcript_cache,
 )
 from .vocab import build_vocab, translate_sentence
 
@@ -142,3 +146,97 @@ def translate():
         return error(f"Çeviri servisi hata verdi (kod {exc.code}).", 502)
     except Exception as exc:  # ağ hatası, engelleme, beklenmeyen yanıt
         return error(f"Çeviri servisine ulaşılamadı ({exc.__class__.__name__}).", 502)
+
+
+# ===== IELTS bölümü =====
+
+def ielts_call(action):
+    """IELTS uçlarının ortak hata biçimi: {"error": mesaj, "code": tür}."""
+    try:
+        return jsonify(action())
+    except GeminiError as exc:
+        return jsonify({"error": exc.message, "code": exc.code}), exc.status
+    except TranscriptError as exc:
+        return jsonify({"error": exc.message, "code": "transcript"}), exc.status
+
+
+def body_value(name, default=""):
+    data = request.get_json(silent=True)
+    return data.get(name, default) if isinstance(data, dict) else default
+
+
+def body_task():
+    task = body_value("task", 0)
+    return task if isinstance(task, int) and not isinstance(task, bool) else 0
+
+
+def body_level():
+    """Zorluk seviyesi (bant 5-8); verilmezse ielts.py varsayılanı kullanır."""
+    level = body_value("level", 0)
+    return level if isinstance(level, int) and not isinstance(level, bool) else 0
+
+
+@app.post("/api/ielts/reading")
+def ielts_reading():
+    """Yeni Reading seti üretir: {"module": "academic" | "general", "level": 5-8}."""
+    return ielts_call(lambda: ielts.make_reading(str(body_value("module")), body_level()))
+
+
+@app.post("/api/ielts/listening")
+def ielts_listening():
+    """Bir videonun transkriptinden dinleme soruları: {"url": youtube linki ya da video id}."""
+    def action():
+        video_id = extract_video_id(str(body_value("url")))
+        if not video_id:
+            raise GeminiError("Bu geçerli bir YouTube linki değil.", 400, "bad_request")
+        data = get_transcript(video_id)
+        return ielts.make_listening(video_id, data.get("title", ""), data["lines"], body_level())
+    return ielts_call(action)
+
+
+@app.post("/api/ielts/writing-task")
+def ielts_writing_task():
+    """Writing konusu: {"module", "task": 1 | 2}."""
+    return ielts_call(lambda: ielts.make_writing_task(str(body_value("module")), body_task(), body_level()))
+
+
+@app.post("/api/ielts/writing-review")
+def ielts_writing_review():
+    """Writing cevabının tahmini değerlendirmesi: {"module", "task", "prompt", "essay"}."""
+    return ielts_call(lambda: ielts.review_writing(
+        str(body_value("module")), body_task(), body_value("prompt"), body_value("essay"), body_value("target", None)))
+
+
+@app.post("/api/ielts/speaking")
+def ielts_speaking():
+    """Speaking Part 1-2-3 soruları."""
+    return ielts_call(lambda: ielts.make_speaking(body_level()))
+
+
+@app.post("/api/ielts/grammar")
+def ielts_grammar():
+    """Gramer tekrarı alıştırması: {"topic": konu anahtarı, "level": 5-8}."""
+    return ielts_call(lambda: ielts.make_grammar(str(body_value("topic")), body_level()))
+
+
+@app.get("/api/ielts/sets")
+def ielts_sets():
+    """Kayıtlı setlerin listesi: ?kind=reading | listening."""
+    return jsonify({"sets": ielts.list_sets(request.args.get("kind", ""))})
+
+
+@app.get("/api/ielts/set")
+def ielts_set():
+    """Kayıtlı tek set: ?kind=&id=."""
+    data = ielts.load_set(request.args.get("kind", ""), request.args.get("id", ""))
+    if data is None:
+        return error("Set bulunamadı.", 404)
+    return jsonify(data)
+
+
+@app.get("/api/ielts/videos")
+def ielts_videos():
+    """Daha önce açılmış (transkripti kayıtlı) videolar: Listening için seçim listesi."""
+    videos = [{"videoId": data["videoId"], "title": data.get("title", ""), "lines": len(data["lines"])}
+              for data in transcript_cache.values()]
+    return jsonify({"videos": sorted(videos, key=lambda video: video["title"].lower())})

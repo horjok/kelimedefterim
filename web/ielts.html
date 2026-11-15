@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>IELTS · Kelime Defteri</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <h1 class="brand"><span class="brand-mark" aria-hidden="true">K</span> Kelime Defteri</h1>
+        <nav class="nav" aria-label="Sayfalar">
+            <a href="index.html">Bugün</a>
+            <a href="kartlar.html">Kartlar</a>
+            <a href="kelimeler.html">Kelimeler</a>
+            <a href="kitaplik.html">Kitaplık</a>
+            <a href="video.html">Video</a>
+            <a href="sozluk.html">Sözlük</a>
+            <a href="ielts.html" aria-current="page">IELTS</a>
+        </nav>
+        <label class="course">Kurs:
+            <select id="courseSelect" aria-label="Kurs dili">
+                <option value="en">İngilizce</option>
+                <option value="de">Almanca</option>
+                <option value="fr">Fransızca</option>
+                <option value="es">İspanyolca</option>
+            </select>
+        </label>
+    </aside>
+
+    <main class="main">
+        <section id="ielts" class="section">
+            <h2><mark>IELTS</mark></h2>
+            <p class="section-hint">Sınavın yapısını öğren, taktikleri gör, hedef bandına göre yol haritanı çıkar ve dört bölümü sınav biçiminde çalış.</p>
+
+            <!-- Sınav türü + sekmeler -->
+            <div class="ielts-top">
+                <div class="segmented" id="ieltsModule" role="group" aria-label="Sınav türü">
+                    <button type="button" data-module="academic" aria-pressed="true">Academic</button>
+                    <button type="button" data-module="general" aria-pressed="false">General Training</button>
+                </div>
+            </div>
+            <div class="ielts-tabs" id="ieltsTabs" role="tablist" aria-label="IELTS bölümleri">
+                <button type="button" role="tab" data-tab="genel" aria-selected="true">Genel bakış</button>
+                <button type="button" role="tab" data-tab="taktik" aria-selected="false">Taktikler</button>
+                <button type="button" role="tab" data-tab="yol" aria-selected="false">Yol haritası</button>
+                <button type="button" role="tab" data-tab="gramer" aria-selected="false">Gramer</button>
+                <button type="button" role="tab" data-tab="reading" aria-selected="false">Reading</button>
+                <button type="button" role="tab" data-tab="listening" aria-selected="false">Listening</button>
+                <button type="button" role="tab" data-tab="writing" aria-selected="false">Writing</button>
+                <button type="button" role="tab" data-tab="speaking" aria-selected="false">Speaking</button>
+            </div>
+
+            <!-- 1. Genel bakış -->
+            <div class="ielts-panel" data-panel="genel">
+                <div class="ielts-sections" id="ieltsSections"></div>
+
+                <article class="panel">
+                    <h3>Bant hesaplayıcı</h3>
+                    <p>Dört bölümün bandını seç; genel bant ortalamadan hesaplanır ve en yakın yarım banda yuvarlanır (ortalama .25 ile bitiyorsa yarıma, .75 ile bitiyorsa tam banda çıkar).</p>
+                    <div class="ielts-calc" id="ieltsCalc">
+                        <label class="field"><span>Listening</span><select data-skill="listening"></select></label>
+                        <label class="field"><span>Reading</span><select data-skill="reading"></select></label>
+                        <label class="field"><span>Writing</span><select data-skill="writing"></select></label>
+                        <label class="field"><span>Speaking</span><select data-skill="speaking"></select></label>
+                        <div class="tile ielts-overall"><span class="tile-label">Genel bant</span><span class="tile-value" id="ieltsOverall">–</span><span class="tile-sub" id="ieltsAverage"></span></div>
+                    </div>
+                </article>
+
+                <article class="panel">
+                    <h3>Writing ve Speaking nasıl puanlanır?</h3>
+                    <p>İki bölüm de dört ölçütle değerlendirilir; ölçütler eşit ağırlıklıdır. Listening ve Reading'de her doğru cevap 1 puandır (40 üzerinden) ve puan banda çevrilir.</p>
+                    <div class="grid grid-2">
+                        <div><h4 class="dict-subtitle ielts-plain">Writing</h4><ul class="ielts-list" id="ieltsCriteriaWriting"></ul></div>
+                        <div><h4 class="dict-subtitle ielts-plain">Speaking</h4><ul class="ielts-list" id="ieltsCriteriaSpeaking"></ul></div>
+                    </div>
+                </article>
+            </div>
+
+            <!-- 2. Taktikler -->
+            <div class="ielts-panel" data-panel="taktik" hidden>
+                <div id="ieltsTactics"></div>
+            </div>
+
+            <!-- 3. Yol haritası -->
+            <div class="ielts-panel" data-panel="yol" hidden>
+                <article class="panel">
+                    <h3>Hedefin</h3>
+                    <form id="roadmapForm" class="ielts-form">
+                        <label class="field"><span>Şu anki bandın (tahmini)</span><select id="roadmapCurrent"></select></label>
+                        <label class="field"><span>Hedef bandın</span><select id="roadmapTarget"></select></label>
+                        <label class="field"><span>Sınav tarihi</span><input type="date" id="roadmapDate"></label>
+                        <label class="field"><span>Günlük çalışma süresi</span>
+                            <select id="roadmapMinutes">
+                                <option value="30">30 dakika</option>
+                                <option value="60" selected>1 saat</option>
+                                <option value="90">1,5 saat</option>
+                                <option value="120">2 saat</option>
+                                <option value="180">3 saat</option>
+                            </select>
+                        </label>
+                        <label class="field"><span>En zayıf bölümün</span>
+                            <select id="roadmapWeak">
+                                <option value="">Bilmiyorum</option>
+                                <option value="listening">Listening</option>
+                                <option value="reading">Reading</option>
+                                <option value="writing">Writing</option>
+                                <option value="speaking">Speaking</option>
+                            </select>
+                        </label>
+                        <button type="submit">Yol haritamı çıkar</button>
+                    </form>
+                    <p class="lab-note">Şu anki bandını bilmiyorsan Reading sekmesinde bir set çöz ve Writing sekmesinde bir Task 2 yazıp değerlendir; çıkan tahmini bantları kullan.</p>
+                    <p id="roadmapMessage"></p>
+                </article>
+
+                <div id="roadmapSummary"></div>
+                <div id="roadmapWeeks"></div>
+
+                <article class="panel">
+                    <h3>Son çalışmaların</h3>
+                    <div id="ieltsResults"></div>
+                </article>
+            </div>
+
+            <!-- Gramer tekrarı (ielts-grammar.js) -->
+            <div class="ielts-panel" data-panel="gramer" hidden>
+                <article class="panel">
+                    <h3>Gramer tekrarı</h3>
+                    <p>Writing ve Speaking puanının dörtte biri dil bilgisidir. Aşağıdaki konular IELTS'te en çok puan getiren ya da kaybettiren yapılardır: bir konu seç, anlatımı oku, sonra kendi seviyende alıştırma çöz.</p>
+                    <div class="ielts-gram-grid" id="gramTopics"></div>
+                </article>
+                <article class="panel" id="gramDetail" hidden></article>
+                <article class="panel" id="gramPractice" hidden>
+                    <div class="ielts-toolbar">
+                        <label class="study-deck">Zorluk <select class="ielts-level" id="grammarLevel" data-skill="grammar" aria-label="Gramer zorluğu"></select></label>
+                        <button type="button" id="gramNew">Alıştırma üret</button>
+                    </div>
+                    <p class="transcript-hint" id="gramStatus"></p>
+                    <div id="gramBody" hidden>
+                        <div id="gramQuestions"></div>
+                        <div class="ielts-actions">
+                            <button type="button" id="gramCheck">Kontrol et</button>
+                            <span class="ielts-score" id="gramScore"></span>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <!-- 4. Reading -->
+            <div class="ielts-panel" data-panel="reading" hidden>
+                <article class="panel">
+                    <div class="ielts-toolbar">
+                        <label class="study-deck">Zorluk <select class="ielts-level" id="readingLevel" data-skill="reading" aria-label="Reading zorluğu"></select></label>
+                        <button type="button" id="readingNew">Yeni metin üret</button>
+                        <label class="study-deck">Önceki setler <select id="readingOld"><option value="">Seç…</option></select></label>
+                        <span class="ielts-timer" id="readingTimer" hidden>20:00</span>
+                    </div>
+                    <p class="lab-note">Zorluk, metnin ve soruların hangi bant seviyesine göre yazılacağını belirler; her bölüm için ayrı seçilir ve hatırlanır. Sorular yapay zekâ (Gemini) üretimidir; gerçek IELTS soruları değildir ve hata içerebilir. Gerçek sınavda 60 dakikada üç metin vardır; burada tek metin için 20 dakika verilir.</p>
+                    <p class="transcript-hint" id="readingStatus"></p>
+                </article>
+                <div class="ielts-reading" id="readingBody" hidden>
+                    <article class="panel ielts-passage" id="readingPassage"></article>
+                    <article class="panel">
+                        <div id="readingQuestions"></div>
+                        <div class="ielts-actions">
+                            <button type="button" id="readingCheck">Kontrol et</button>
+                            <span class="ielts-score" id="readingScore"></span>
+                        </div>
+                    </article>
+                </div>
+            </div>
+
+            <!-- 5. Listening -->
+            <div class="ielts-panel" data-panel="listening" hidden>
+                <article class="panel">
+                    <div class="ielts-toolbar">
+                        <label class="study-deck">Video <select id="listeningVideo"><option value="">Seç…</option></select></label>
+                        <label class="study-deck">Zorluk <select class="ielts-level" id="listeningLevel" data-skill="listening" aria-label="Listening zorluğu"></select></label>
+                        <button type="button" id="listeningNew">Soruları üret</button>
+                        <label class="study-deck">Önceki setler <select id="listeningOld"><option value="">Seç…</option></select></label>
+                    </div>
+                    <p class="lab-note">Listede yalnızca Video sayfasında daha önce açtığın videolar çıkar. Sorular yapay zekâ üretimidir. Sınavdaki gibi çalışmak için videoyu bir kez, durdurmadan dinle ve cevapları dinlerken yaz.</p>
+                    <p class="transcript-hint" id="listeningStatus"></p>
+                </article>
+                <div class="ielts-reading" id="listeningBody" hidden>
+                    <article class="panel">
+                        <div class="player-box"><div id="listeningPlayer"></div></div>
+                        <p class="lab-note" id="listeningCover"></p>
+                    </article>
+                    <article class="panel">
+                        <div id="listeningQuestions"></div>
+                        <div class="ielts-actions">
+                            <button type="button" id="listeningCheck">Kontrol et</button>
+                            <span class="ielts-score" id="listeningScore"></span>
+                        </div>
+                    </article>
+                </div>
+            </div>
+
+            <!-- 6. Writing -->
+            <div class="ielts-panel" data-panel="writing" hidden>
+                <article class="panel">
+                    <div class="ielts-toolbar">
+                        <div class="segmented" id="writingTask" role="group" aria-label="Görev">
+                            <button type="button" data-task="1" aria-pressed="false">Task 1</button>
+                            <button type="button" data-task="2" aria-pressed="true">Task 2</button>
+                        </div>
+                        <label class="study-deck">Zorluk <select class="ielts-level" id="writingLevel" data-skill="writing" aria-label="Writing zorluğu"></select></label>
+                        <button type="button" id="writingNew">Konu üret</button>
+                        <span class="ielts-timer" id="writingTimer">40:00</span>
+                        <button type="button" class="mini" id="writingTimerToggle">Süreyi başlat</button>
+                    </div>
+                    <p class="transcript-hint" id="writingStatus"></p>
+                    <div class="ielts-prompt" id="writingPrompt" hidden></div>
+                    <label class="field"><span>Cevabın</span>
+                        <textarea class="dictation-typed ielts-essay" id="writingEssay" rows="14" placeholder="Önce bir konu üret ya da kendi konunu çalışıyorsan doğrudan yazmaya başla."></textarea>
+                    </label>
+                    <div class="ielts-actions">
+                        <span class="ielts-words" id="writingWords">0 kelime</span>
+                        <button type="button" id="writingReview">Değerlendir</button>
+                    </div>
+                    <p class="lab-note">Değerlendirme yapay zekâ tahminidir, resmi puan değildir; gerçek sınav görevlisinin puanından farklı olabilir. Taslağın bu tarayıcıda kendiliğinden kaydedilir.</p>
+                </article>
+                <article class="panel" id="writingResult" hidden></article>
+            </div>
+
+            <!-- 7. Speaking -->
+            <div class="ielts-panel" data-panel="speaking" hidden>
+                <article class="panel">
+                    <div class="ielts-toolbar">
+                        <label class="study-deck">Zorluk <select class="ielts-level" id="speakingLevel" data-skill="speaking" aria-label="Speaking zorluğu"></select></label>
+                        <button type="button" id="speakingNew">Soruları üret</button>
+                        <button type="button" class="mini" id="speakingRecord">● Kendini kaydet</button>
+                        <button type="button" class="mini" id="speakingPlayback" disabled>▶ Kaydımı dinle</button>
+                    </div>
+                    <p class="lab-note">Sorular yapay zekâ üretimidir. Kaydın yalnızca bu tarayıcıda durur, hiçbir yere gönderilmez. Konuşman yapay zekâyla puanlanmaz; kaydını dinleyip aşağıdaki ölçütlere göre kendin değerlendir.</p>
+                    <p class="transcript-hint" id="speakingStatus"></p>
+                </article>
+                <div id="speakingBody" hidden>
+                    <article class="panel">
+                        <h3>Bölüm 1 · tanıdık konular (4–5 dk)</h3>
+                        <div id="speakingPart1"></div>
+                    </article>
+                    <article class="panel">
+                        <h3>Bölüm 2 · konu kartı (1 dk hazırlık + 2 dk konuşma)</h3>
+                        <div class="ielts-cue" id="speakingCard"></div>
+                        <div class="ielts-toolbar">
+                            <button type="button" class="mini" id="speakingPrep">1 dk hazırlık</button>
+                            <button type="button" class="mini" id="speakingTalk">2 dk konuşma</button>
+                            <span class="ielts-timer" id="speakingTimer">1:00</span>
+                        </div>
+                        <label class="field"><span>Hazırlık notların</span><textarea class="dictation-typed" id="speakingNotes" rows="3" placeholder="Her madde için bir anahtar kelime"></textarea></label>
+                    </article>
+                    <article class="panel">
+                        <h3>Bölüm 3 · tartışma (4–5 dk)</h3>
+                        <ol class="ielts-list" id="speakingPart3"></ol>
+                    </article>
+                    <article class="panel">
+                        <h3>Kendini değerlendir</h3>
+                        <ul class="ielts-list ielts-checks" id="speakingChecks"></ul>
+                    </article>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="js/helpers.js"></script>
+<script src="js/course.js"></script>
+<script src="js/lessons/conditionals.js"></script>
+<script src="js/ielts-data.js"></script>
+<script src="js/ielts.js"></script>
+<script src="js/ielts-practice.js"></script>
+<script src="js/ielts-grammar.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>

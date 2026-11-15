@@ -78,7 +78,7 @@ mark, .learned .front .word {
 /* Telefonda menü: alta sabit sekme çubuğu */
 .nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
-    display: grid; grid-template-columns: repeat(6, 1fr);
+    display: flex; overflow-x: auto; scrollbar-width: none;
     padding-bottom: env(safe-area-inset-bottom, 0px);
     background: var(--paper);
     border-top: 1px solid var(--rule);
@@ -903,3 +903,153 @@ button.mini:active, a.mini:active, .level-chip:active, .v-save button:active, .b
 .v-dict { display: block; margin: 0 10px 10px; padding: 4px; border-radius: 10px; text-align: center; text-decoration: none; font: 700 12px var(--font-body); color: var(--primary); }
 .v-dict:hover { background: var(--primary-soft); }
 @media (pointer: coarse) { .v-dict { min-height: 40px; display: grid; place-items: center; } }
+
+/* Telefonda alt menü: 7 sekme sığmadığı için yana kaydırılır */
+.nav::-webkit-scrollbar { display: none; }
+.nav a { flex: 1 0 auto; padding-left: 12px; padding-right: 12px; }
+@media (min-width: 960px) {
+    .nav { overflow: visible; }
+    .nav a { flex: none; }
+}
+
+/* ===== IELTS sayfası (ielts.js, ielts-practice.js) ===== */
+.ielts-top { margin-bottom: 12px; }
+.ielts-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 10px; margin-bottom: 8px; scrollbar-width: thin; }
+.ielts-tabs button { flex: none; padding: 9px 16px; border-radius: 999px; font-size: 15px; color: var(--ink); background: var(--paper); box-shadow: 0 0 0 2px var(--primary-soft); }
+.ielts-tabs button:hover { transform: none; box-shadow: 0 0 0 2px var(--secondary); }
+.ielts-tabs button[aria-selected="true"] { color: #FFFFFF; background: var(--primary); box-shadow: 0 3px 0 var(--primary-deep); }
+.ielts-panel[hidden] { display: none; }
+.ielts-panel > .panel, .ielts-panel > div > .panel, .ielts-panel > .tiles { margin-bottom: 16px; }
+.ielts-sections { display: grid; gap: 16px; margin-bottom: 16px; }
+.ielts-sections > .panel { margin-bottom: 0; }
+.ielts-section-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.ielts-section-head h3 { margin: 0 auto 0 0; font-size: 22px; }
+.ielts-list { margin: 0 0 12px; padding-left: 20px; display: grid; gap: 6px; }
+.ielts-plain { margin-top: 0; padding-top: 0; border-top: none; }
+.ielts-calc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: end; }
+.ielts-calc select, .ielts-form select, .ielts-form input[type="date"] {
+    width: 100%; min-height: 44px; padding: 8px 10px; border: 2px solid var(--rule); border-radius: 14px;
+    background: var(--paper); color: var(--ink); font: 400 16px var(--font-body);
+}
+.ielts-calc select:focus, .ielts-form select:focus, .ielts-form input[type="date"]:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.18); }
+.ielts-calc .field, .ielts-form .field { margin: 0; }
+.ielts-overall { grid-column: 1 / -1; text-align: center; background: var(--primary-soft); }
+.ielts-overall .tile-value { font-size: 40px; }
+.ielts-tactics { display: grid; gap: 12px; }
+.ielts-tactic { padding: 12px 14px; border-radius: 16px; background: var(--ground); }
+.ielts-tactic h4 { margin: 0 0 4px; font-family: var(--font-display); font-weight: 800; font-size: 16px; }
+.ielts-tactic p { margin: 0 0 8px; font-size: 15px; }
+.ielts-tactic p:last-child { margin-bottom: 0; }
+.ielts-tactic a.mini { display: inline-block; background: var(--paper); }
+.ielts-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: end; margin-bottom: 10px; }
+.ielts-form button { min-height: 44px; box-shadow: var(--press); }
+.ielts-form button:active { transform: translateY(3px); box-shadow: var(--press-down); }
+#roadmapMessage { min-height: 1.4em; margin: 8px 0 0; font-size: 14px; }
+.ielts-note { margin: 0 0 16px; padding: 12px 14px; border-radius: 16px; background: var(--marker-soft); font-size: 15px; }
+.ielts-week { margin-bottom: 12px; padding: 14px 16px; }
+.ielts-week summary { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; cursor: pointer; list-style: none; }
+.ielts-week summary::-webkit-details-marker { display: none; }
+.ielts-week[open] summary { margin-bottom: 8px; }
+.ielts-week-title { font-family: var(--font-display); font-weight: 800; font-size: 18px; }
+.ielts-week summary .saved-video-count { margin-left: auto; }
+.chip.ielts-phase-temel { color: var(--ink); background: var(--marker-soft); }
+.chip.ielts-phase-beceri { color: var(--ink); background: var(--primary-soft); }
+.chip.ielts-phase-deneme { color: #FFFFFF; background: var(--ok); }
+.ielts-checks { list-style: none; padding-left: 0; }
+.ielts-checks li { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--primary-soft); }
+.ielts-checks li:last-child { border-bottom: none; }
+.ielts-checks .check { align-items: flex-start; font-size: 15px; color: var(--ink); cursor: pointer; }
+.ielts-checks .check input { flex: none; width: 20px; height: 20px; margin-top: 2px; }
+.ielts-checks .check input:checked + span { color: var(--ink-soft); text-decoration: line-through; }
+.ielts-checks a.mini { flex: none; }
+.ielts-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+.ielts-toolbar > button:not(.mini) { min-height: 44px; box-shadow: var(--press); }
+.ielts-toolbar > button:not(.mini):active { transform: translateY(3px); box-shadow: var(--press-down); }
+.ielts-toolbar .study-deck select { max-width: 260px; }
+.ielts-timer { margin-left: auto; padding: 6px 14px; border-radius: 12px; background: var(--primary-soft); font-family: var(--font-display); font-weight: 900; font-size: 20px; font-variant-numeric: tabular-nums; }
+.ielts-timer[hidden] { display: none; }
+.ielts-timer.ending { color: #FFFFFF; background: #B45309; }
+.ielts-timer.ended { color: #FFFFFF; background: var(--error); }
+.ielts-panel .transcript-hint { margin: 4px 0; }
+.ielts-panel .transcript-hint:empty { display: none; }
+.ielts-reading[hidden], #speakingBody[hidden], .ielts-prompt[hidden], #writingResult[hidden] { display: none; }
+.ielts-reading { display: grid; gap: 16px; }
+.ielts-reading > .panel { margin-bottom: 0; }
+.ielts-passage h3 { font-size: 22px; }
+.ielts-paragraph { font-size: 16px; line-height: 1.65; border-radius: 10px; transition: background 0.3s ease-out; scroll-margin-top: 16px; }
+.ielts-paragraph.flash { background: var(--marker-soft); }
+.ielts-letter { display: inline-grid; place-items: center; width: 1.7em; height: 1.7em; margin-right: 8px; border-radius: 8px; color: #FFFFFF; background: var(--primary); font-size: 13px; }
+.ielts-question { padding: 12px 0; border-bottom: 1px dashed var(--rule); }
+.ielts-question:first-child { padding-top: 0; }
+.ielts-question-text { margin: 0 0 8px !important; line-height: 1.9; }
+.ielts-number { display: inline-grid; place-items: center; min-width: 1.8em; height: 1.8em; margin-right: 8px; border-radius: 8px; background: var(--primary-soft); font-weight: 700; font-size: 13px; }
+.ielts-question.correct .ielts-number { color: #FFFFFF; background: var(--ok); }
+.ielts-question.wrong .ielts-number { color: #FFFFFF; background: var(--error); }
+.ielts-tfng { flex-wrap: wrap; border-radius: 16px; }
+.ielts-options { display: grid; gap: 6px; }
+.ielts-option { min-height: 44px; padding: 8px 12px; border-radius: 12px; text-align: left; font: 400 15px var(--font-body); color: var(--ink); background: var(--ground); white-space: pre-wrap; }
+.ielts-option:hover { transform: none; box-shadow: 0 0 0 2px var(--secondary); }
+.ielts-option[aria-pressed="true"] { color: #FFFFFF; background: var(--primary); }
+.ielts-option:disabled, .ielts-tfng button:disabled { cursor: default; opacity: 1; }
+.ielts-option:disabled { background: var(--ground); color: var(--ink-soft); }
+.ielts-option:disabled[aria-pressed="true"] { color: #FFFFFF; background: var(--ink-soft); }
+.ielts-option.answer:disabled, .ielts-tfng button.answer:disabled { color: #FFFFFF; background: var(--ok); }
+.ielts-question input.dictation-slot { width: 9em; }
+.ielts-question.correct input.dictation-slot { color: var(--ok); border-color: var(--ok); }
+.ielts-question.wrong input.dictation-slot { color: var(--error); border-color: var(--error); }
+.ielts-feedback { margin-top: 8px; padding: 8px 12px; border-radius: 12px; background: var(--ground); font-size: 14px; }
+.ielts-feedback p { margin: 0 0 4px; }
+.ielts-explanation { color: var(--ink-soft); }
+.ielts-heard { margin: 4px 0 0 !important; }
+.ielts-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.ielts-actions button { min-height: 44px; box-shadow: var(--press); }
+.ielts-actions button:active { transform: translateY(3px); box-shadow: var(--press-down); }
+.ielts-actions button:disabled { box-shadow: none; }
+.ielts-score { font-family: var(--font-display); font-weight: 900; font-size: 20px; color: var(--primary); }
+.ielts-prompt { margin: 8px 0 12px; padding: 14px 16px; border-radius: 16px; background: var(--ground); border: 2px solid var(--primary-soft); }
+.ielts-prompt-text { font-weight: 700; font-size: 17px; }
+.ielts-chart { margin: 8px 0; padding: 10px; border-radius: 14px; background: var(--paper); }
+.ielts-chart figcaption { margin-bottom: 6px; font-weight: 700; text-align: center; }
+.ielts-chart svg { display: block; width: 100%; height: auto; }
+.ielts-data { width: 100%; margin-top: 8px; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.ielts-data th, .ielts-data td { padding: 4px 6px; border-bottom: 1px solid var(--primary-soft); text-align: right; }
+.ielts-data th:first-child { text-align: left; }
+textarea.ielts-essay { min-height: 280px; font-size: 16px; line-height: 1.6; }
+.ielts-words { font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.ielts-words.enough { color: var(--ok); }
+.ielts-criterion { margin: 10px 0 0 !important; font-size: 15px; }
+.ielts-correction { margin-bottom: 8px; padding: 10px 12px; border-radius: 12px; background: var(--ground); font-size: 15px; }
+.ielts-correction p { margin: 0 0 4px; }
+.ielts-original { color: var(--error); text-decoration: line-through; text-decoration-color: rgba(185, 28, 28, 0.5); }
+.ielts-better { color: var(--ok); font-weight: 700; }
+.ielts-cue { margin-bottom: 12px; padding: 14px 16px; border-radius: 16px; background: var(--marker-soft); }
+.ielts-cue p { margin: 0 0 6px; }
+.today-ielts { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; margin-top: 16px; padding: 14px 20px; text-decoration: none; }
+.today-ielts[hidden] { display: none; }
+.today-ielts-title { font-family: var(--font-display); font-weight: 900; font-size: 18px; color: var(--primary); }
+@media (min-width: 720px) {
+    .ielts-sections { grid-template-columns: 1fr 1fr; }
+    .ielts-calc { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .ielts-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .ielts-tactics { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 1100px) {
+    .ielts-reading { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; }
+    .ielts-passage { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+}
+
+/* IELTS: zorluk seçimi */
+.ielts-toolbar select.ielts-level { min-height: 44px; padding: 8px 10px; border: 2px solid var(--rule); border-radius: 14px; background: var(--paper); color: var(--ink); font: 400 15px var(--font-body); cursor: pointer; }
+
+/* IELTS: Gramer tekrarı sekmesi (ielts-grammar.js) */
+.ielts-gram-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.ielts-gram-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 44px; padding: 12px 14px; border-radius: 16px; text-align: left; color: var(--ink); background: var(--ground); box-shadow: 0 0 0 2px var(--primary-soft); }
+.ielts-gram-card:hover { transform: none; box-shadow: 0 0 0 2px var(--secondary); }
+.ielts-gram-card[aria-pressed="true"] { background: var(--primary-soft); box-shadow: 0 0 0 2px var(--primary); }
+.ielts-gram-title { font-family: var(--font-display); font-weight: 800; font-size: 16px; line-height: 1.2; }
+.ielts-gram-en { font: 400 13px/1.3 var(--font-body); color: var(--ink-soft); }
+.ielts-gram-card .chip { margin-top: 4px; padding: 1px 10px; font-size: 12px; background: var(--paper); }
+.ielts-gram-card .chip.status-learned { background: var(--ok); }
+.ielts-gram-card .chip.status-learning { background: #FBE6C8; }
+#gramDetail[hidden], #gramPractice[hidden], #gramBody[hidden] { display: none; }
+#gramDetail .grammar-pattern { font-size: 15px; }

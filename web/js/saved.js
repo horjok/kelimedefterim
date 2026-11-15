@@ -726,9 +726,32 @@ function renderTodayVideos(all) {
     }
 }
 
+// IELTS yol haritası çıkarıldıysa (ielts.js "ielts:profile") hedef bant ve sınava kalan gün
+function renderTodayIelts() {
+    let box = document.getElementById("todayIelts");
+    let profile;
+    try {
+        profile = JSON.parse(localStorage.getItem("ielts:profile"));
+    } catch (error) {
+        profile = null;
+    }
+    if (!box || !profile || !profile.date || typeof profile.target !== "number") {
+        return;
+    }
+    let today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let days = Math.round((new Date(profile.date + "T00:00:00") - today) / SAVED_DAY);
+    box.replaceChildren(
+        savedElement("span", "today-ielts-title", `IELTS hedefin: ${profile.target.toFixed(1)}`),
+        savedElement("span", "saved-video-count", days > 0 ? `sınava ${days} gün · yol haritasını aç →` : "sınav tarihi geçti · yeni tarih gir →")
+    );
+    box.hidden = false;
+}
+
 if (document.getElementById("todayHero")) {
     let all = savedAll();
     let now = Date.now();
+    renderTodayIelts();
     renderTodayHero(all, now);
     renderTodayWord(all);
     renderTodayVideos(all);
