@@ -1,0 +1,11 @@
+# Gizli anahtar: asla paylaşma
+gemini_key.txt
+
+# Kendiliğinden oluşan dosyalar
+__pycache__/
+*.pyc
+cache/
+
+# Yerel yedekler ve kişisel ayarlar
+_yedek/
+.claude/settings.local.json

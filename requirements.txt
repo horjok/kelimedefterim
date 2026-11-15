@@ -1,0 +1,6 @@
+flask>=3.0
+youtube-transcript-api>=1.2
+eng-to-ipa>=0.0.2
+cefrpy>=1.0
+lemminflect>=0.2
+wordfreq>=3.0

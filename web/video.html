@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Video · Kelime Defteri</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <h1 class="brand"><span class="brand-mark" aria-hidden="true">K</span> Kelime Defteri</h1>
+        <nav class="nav" aria-label="Sayfalar">
+            <a href="index.html">Bugün</a>
+            <a href="kartlar.html">Kartlar</a>
+            <a href="kelimeler.html">Kelimeler</a>
+            <a href="kitaplik.html">Kitaplık</a>
+            <a href="video.html" aria-current="page">Video</a>
+            <a href="sozluk.html">Sözlük</a>
+        </nav>
+        <label class="course">Kurs:
+            <select id="courseSelect" aria-label="Kurs dili">
+                <option value="en">İngilizce</option>
+                <option value="de">Almanca</option>
+                <option value="fr">Fransızca</option>
+                <option value="es">İspanyolca</option>
+            </select>
+        </label>
+    </aside>
+
+    <main class="main">
+        <section id="video" class="section">
+            <h2><mark>Video</mark></h2>
+            <p class="section-hint">Altyazılı bir YouTube videosunun linkini yapıştır. Cümleler ve her kelimenin telaffuzu (IPA) altta çıkar.</p>
+
+            <form class="panel video-form" id="videoForm">
+                <div class="inline-form">
+                    <input type="text" id="videoUrl" placeholder="https://www.youtube.com/watch?v=..." aria-label="YouTube linki" autocomplete="off">
+                    <button type="submit" id="videoButton">Getir</button>
+                </div>
+                <p id="videoResult"></p>
+            </form>
+
+            <div class="video-layout" id="videoLayout" data-mode="lines" hidden>
+                <div class="modes" role="tablist" aria-label="Çalışma modu">
+                    <button type="button" class="mode" role="tab" id="modeLines" data-mode="lines" aria-selected="true" aria-controls="transcript">
+                        <span class="mode-title">Transkript</span>
+                        <span class="mode-desc">Cümleleri ve telaffuzu oku</span>
+                    </button>
+                    <button type="button" class="mode" role="tab" id="modeDictation" data-mode="dictation" aria-selected="false" aria-controls="dictation">
+                        <span class="mode-title">Dikte <span id="dictationModeCount" class="mode-count"></span></span>
+                        <span class="mode-desc">Dinle, boşlukları doldur</span>
+                    </button>
+                    <button type="button" class="mode" role="tab" id="modeVocab" data-mode="vocab" aria-selected="false" aria-controls="transcript">
+                        <span class="mode-title">Kelimeler <span id="vocabCount" class="mode-count"></span></span>
+                        <span class="mode-desc">Videodaki önemli kelimeler</span>
+                    </button>
+                    <button type="button" class="mode" role="tab" id="modeGrammar" data-mode="grammar" aria-selected="false" aria-controls="transcript">
+                        <span class="mode-title">Gramer <span id="grammarCount" class="mode-count"></span></span>
+                        <span class="mode-desc">Videodaki dil bilgisi konuları</span>
+                    </button>
+                </div>
+
+                <div class="video-main">
+                    <!-- Telefonda video + shadowing çubuğu birlikte üstte sabit kalır -->
+                    <div class="player-wrap">
+                        <div class="player-box">
+                            <div id="player"></div>
+                        </div>
+                        <!-- Shadowing: sadece Transkript modunda görünür (video.js setMode) -->
+                        <div class="shadow-bar" id="shadowBar" role="group" aria-label="Shadowing kontrolleri">
+                            <div class="shadow-buttons">
+                                <button type="button" id="shadowPrev" title="Önceki cümle (←)">◀ Önceki</button>
+                                <button type="button" id="shadowReplay" title="Cümleyi baştan çal (R)">⟲ Tekrar</button>
+                                <button type="button" id="shadowPlay" title="Oynat / duraklat (Boşluk)">▶ Oynat</button>
+                                <button type="button" id="shadowNext" title="Sonraki cümle (→)">Sonraki ▶</button>
+                            </div>
+                            <div class="shadow-options">
+                                <span class="shadow-counter" id="shadowCounter" aria-live="polite">Cümle – / –</span>
+                                <label class="shadow-speed">Hız
+                                    <select id="shadowSpeed" aria-label="Oynatma hızı">
+                                        <option value="0.5">0.5×</option>
+                                        <option value="0.75">0.75×</option>
+                                        <option value="1" selected>1×</option>
+                                        <option value="1.25">1.25×</option>
+                                        <option value="1.5">1.5×</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="shadow-options">
+                                <label class="shadow-speed" title="Her cümle kaç kez çalınsın">Tekrar
+                                    <select id="shadowRepeat" aria-label="Cümle tekrar sayısı">
+                                        <option value="1">×1</option>
+                                        <option value="2">×2</option>
+                                        <option value="3">×3</option>
+                                        <option value="5">×5</option>
+                                        <option value="10">×10</option>
+                                    </select>
+                                </label>
+                                <label class="shadow-speed" title="Cümle bitince ne olsun: durmadan devam, sen devam ettirene kadar dur, ya da senin tekrar etmen için cümle süresi kadar bekleyip kendiliğinden devam">Cümle sonu
+                                    <select id="shadowGap" aria-label="Cümle sonunda ne olsun">
+                                        <option value="off">Durma</option>
+                                        <option value="manual" selected>Dur</option>
+                                        <option value="0.5">Bekle +%50</option>
+                                        <option value="1">Bekle +%100</option>
+                                        <option value="1.5">Bekle +%150</option>
+                                    </select>
+                                </label>
+                                <label class="shadow-speed" title="Cümle bitmeden video duruyorsa artır: her cümlenin sonunda bu kadar daha çalar">Sonda +
+                                    <select class="tail-select" id="shadowTail" aria-label="Cümle sonuna eklenen süre">
+                                        <option value="0">0 sn</option>
+                                        <option value="1">1 sn</option>
+                                        <option value="2">2 sn</option>
+                                        <option value="3">3 sn</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <p class="shadow-shortcut">Kısayollar: ← önceki · → sonraki · R tekrar · Boşluk oynat/duraklat</p>
+                        </div>
+                        <!-- Dikte: sadece Dikte modunda görünür (video.js setMode); düğmeleri dictation.js bağlar -->
+                        <div class="shadow-bar dictation-bar" id="dictationBar" role="group" aria-label="Dikte oynatma kontrolleri" hidden>
+                            <div class="shadow-buttons">
+                                <button type="button" id="dictationPrevious" title="Önceki cümle">◀ Önceki</button>
+                                <button type="button" id="dictationListen" title="Cümleyi baştan çal (Ctrl+Boşluk)">▶ Dinle</button>
+                                <button type="button" id="dictationNext" title="Sonraki cümle">Sonraki ▶</button>
+                            </div>
+                            <div class="shadow-options">
+                                <label class="dictation-speed">Hız
+                                    <select id="dictationSpeed" aria-label="Oynatma hızı">
+                                        <option value="0.5">0.5×</option>
+                                        <option value="0.75">0.75×</option>
+                                        <option value="1" selected>1×</option>
+                                        <option value="1.25">1.25×</option>
+                                        <option value="1.5">1.5×</option>
+                                    </select>
+                                </label>
+                                <label class="check" title="Cümle çözülene kadar kendiliğinden yeniden çalar"><input type="checkbox" id="dictationLoop"> Otomatik tekrar</label>
+                                <label class="shadow-speed" title="Cümle bitmeden video duruyorsa artır: her cümlenin sonunda bu kadar daha çalar">Sonda +
+                                    <select class="tail-select" id="dictationTail" aria-label="Cümle sonuna eklenen süre">
+                                        <option value="0">0 sn</option>
+                                        <option value="1">1 sn</option>
+                                        <option value="2">2 sn</option>
+                                        <option value="3">3 sn</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Shadowing cümle kartı: yalnızca Transkript modunda (video.js renderShadowCard) -->
+                    <section class="panel shadow-card" id="shadowCard" aria-label="Çalışılan cümle" hidden>
+                        <p class="shadow-sentence" id="shadowSentence"></p>
+                        <p class="shadow-translation" id="shadowTranslation" hidden></p>
+                        <div class="shadow-card-actions">
+                            <label class="check"><input type="checkbox" id="shadowIpa" checked> IPA</label>
+                            <button type="button" class="mini" id="shadowTranslate">Çevir</button>
+                            <button type="button" class="mini" id="shadowRecord" title="Cümleyi kendi sesinle kaydet">● Kendini kaydet</button>
+                            <button type="button" class="mini" id="shadowPlayback" title="Son kaydını dinle" disabled>▶ Kaydımı dinle</button>
+                            <button type="button" class="mini" id="buildupOpen" aria-pressed="false" title="Cümleyi sondan başlayarak parça parça kur (backward build-up)">Sondan başa</button>
+                        </div>
+                        <p class="shadow-record-note" id="shadowRecordNote" aria-live="polite"></p>
+                        <!-- Sondan başa alıştırması (buildup.js) -->
+                        <div class="buildup" id="buildupPanel" hidden>
+                            <div class="buildup-head">
+                                <span class="preview-label">Sondan başa kur</span>
+                                <span class="shadow-counter" id="buildupStep"></span>
+                            </div>
+                            <p class="buildup-text" id="buildupText" aria-live="polite"></p>
+                            <div class="buildup-actions">
+                                <button type="button" class="mini" id="buildupPrev">◀ Geri</button>
+                                <button type="button" class="mini" id="buildupListen">🔊 Dinle</button>
+                                <button type="button" class="mini" id="buildupNext">Parça ekle ▶</button>
+                                <button type="button" class="mini" id="buildupEnd">Kapat</button>
+                            </div>
+                            <p class="buildup-hint" id="buildupHint"></p>
+                        </div>
+                    </section>
+                    <section class="panel dictation" id="dictation" role="tabpanel" aria-labelledby="dictationTitle" hidden>
+                        <div class="dictation-head">
+                            <h3 id="dictationTitle">Dikte</h3>
+                            <span id="dictationCounter">Transkript ve kelimeler bekleniyor…</span>
+                            <span id="dictationScore">İlk denemede doğru: 0 / 0 kelime</span>
+                            <button type="button" class="mini" id="dictationGear" title="Zorluk ve tür seçimini göster / gizle" aria-expanded="true">⚙ Ayarlar</button>
+                        </div>
+                        <!-- Zorluk (kaç kelime gizlenir) ve alıştırma türü -->
+                        <div class="dictation-choices" id="dictationChoices">
+                            <div class="segmented" id="dictationDifficulty" role="group" aria-label="Zorluk">
+                                <button type="button" data-value="easy">Kolay</button>
+                                <button type="button" data-value="medium">Orta</button>
+                                <button type="button" data-value="hard">Zor</button>
+                            </div>
+                            <div class="segmented" id="dictationModeSelect" role="group" aria-label="Alıştırma türü">
+                                <button type="button" data-value="fill" title="Gizlenen kelimeleri yaz">Boşluk</button>
+                                <button type="button" data-value="arrange" title="Karışık kelimeleri sıraya diz">Sırala</button>
+                                <button type="button" data-value="sentence" title="Cümlenin tamamını yaz">Cümle</button>
+                            </div>
+                        </div>
+                        <!-- Başlamadan önce: seçilen türün örneği (dictation.js dictationRenderPreview) -->
+                        <div class="dictation-preview" id="dictationPreview">
+                            <span class="preview-label">Önizleme</span>
+                            <p class="preview-sample" id="dictationPreviewSample"></p>
+                            <p class="preview-text" id="dictationPreviewText"></p>
+                            <button type="button" id="dictationStart" disabled>▶ Başla</button>
+                            <p class="preview-text">Başla düğmesine basınca cümle çalar; cevabını yazıp kontrol edersin.</p>
+                        </div>
+                        <div id="dictationExercise" hidden>
+                            <div class="dictation-sentence" id="dictationSentence"></div>
+                            <div class="dictation-bank" id="dictationBank" aria-label="Kelime bankası"></div>
+                            <p class="dictation-translation" id="dictationTranslation" hidden></p>
+                            <!-- Cümle bitince: bu cümlede geçen gramer konuları (Gramer modu yüklendiyse) -->
+                            <div class="dictation-grammar" id="dictationGrammar" hidden></div>
+                            <div class="dictation-controls">
+                                <button type="button" id="dictationCheck">Kontrol et</button>
+                                <button type="button" class="ghost" id="dictationHint">İpucu</button>
+                                <button type="button" class="ghost" id="dictationReveal">Cevabı göster</button>
+                                <button type="button" class="ghost" id="dictationTranslate" title="Cümlenin Türkçe çevirisini göster">Çevir</button>
+                                <button type="button" class="ghost" id="dictationRestart">Baştan başla</button>
+                            </div>
+                        </div>
+                        <p class="dictation-message" id="dictationMessage" aria-live="polite"></p>
+                        <p class="dictation-shortcut">Enter: kontrol · Ctrl+Boşluk: tekrar dinle · Hepsi doğru olunca sonraki cümleye geçilir</p>
+                    </section>
+                    <!-- Bu videoya özel notlar: localStorage "notes:<videoId>" (video.js) -->
+                    <details class="panel video-notes" id="videoNotes">
+                        <summary>Notlarım <span class="mode-count" id="notesState"></span></summary>
+                        <textarea id="notesText" rows="4" placeholder="Bu videodan aklında kalsın istediklerini yaz…" aria-label="Notlarım"></textarea>
+                    </details>
+                </div>
+                <!-- Dikte modunda cümleler noktalarla maskelenir (#maskView): cevaplar transkriptten okunamasın -->
+                <article class="panel transcript" id="transcript" role="tabpanel">
+                    <div id="linesView" aria-labelledby="modeLines">
+                        <p class="transcript-hint">Bir cümleye dokun, video oradan oynasın.</p>
+                        <div id="lines"></div>
+                    </div>
+
+                    <div id="maskView" aria-labelledby="modeDictation" hidden>
+                        <p class="transcript-hint"><b id="maskCount"></b> · Bir cümleye dokun, dikte oradan sürsün. Bitirdiğin cümleler açılır.</p>
+                        <div id="maskLines"></div>
+                    </div>
+
+                    <!-- Gramer modu: Gemini'nin çıkardığı konular (grammar.js) -->
+                    <div id="grammarView" aria-labelledby="modeGrammar" hidden>
+                        <p class="transcript-hint" id="grammarStatus"></p>
+                        <div class="grammar-help" id="grammarHelp" hidden>
+                            <p><b>Gemini anahtarını bağlamak için:</b></p>
+                            <ol>
+                                <li>Google AI Studio'dan (aistudio.google.com) bir API anahtarı al.</li>
+                                <li>Proje klasöründe <code>gemini_key.txt</code> adında bir dosya oluştur ve anahtarı ilk satırına yapıştır.</li>
+                                <li>Aşağıdaki düğmeye bas. Sunucuyu yeniden başlatman gerekmez.</li>
+                            </ol>
+                            <p>Anahtar yalnızca bu bilgisayarda kalır; kimseyle paylaşma.</p>
+                        </div>
+                        <button type="button" class="mini" id="grammarRetry" hidden>Yeniden dene</button>
+                        <div class="grammar-topics" id="grammarTopics"></div>
+                    </div>
+
+                    <div id="vocabView" aria-labelledby="modeVocab" hidden>
+                        <p class="transcript-hint" id="vocabStatus"></p>
+                        <!-- Kartlara / kelime listesine kaydedilenlerin sayısı (video.js renderSavedSummary) -->
+                        <p class="transcript-hint saved-summary" id="savedSummary"></p>
+                        <div class="level-chips" id="levelChips"></div>
+                        <!-- Seçili gruptaki tüm kelimeleri tek tuşla kaydetme (video.js renderBulkSave) -->
+                        <div class="bulk-save" id="bulkSave"></div>
+                        <div class="vocab-list" id="vocabList"></div>
+                    </div>
+                </article>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="js/helpers.js"></script>
+<script src="js/course.js"></script>
+<script src="js/lessons/conditionals.js"></script>
+<script src="js/store.js"></script>
+<script src="js/video.js"></script>
+<script src="js/grammar.js"></script>
+<script src="js/buildup.js"></script>
+<script src="js/dictation.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>

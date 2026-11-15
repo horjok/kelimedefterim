@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Kartlar · Kelime Defteri</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <h1 class="brand"><span class="brand-mark" aria-hidden="true">K</span> Kelime Defteri</h1>
+        <nav class="nav" aria-label="Sayfalar">
+            <a href="index.html">Bugün</a>
+            <a href="kartlar.html" aria-current="page">Kartlar</a>
+            <a href="kelimeler.html">Kelimeler</a>
+            <a href="kitaplik.html">Kitaplık</a>
+            <a href="video.html">Video</a>
+            <a href="sozluk.html">Sözlük</a>
+        </nav>
+        <label class="course">Kurs:
+            <select id="courseSelect" aria-label="Kurs dili">
+                <option value="en">İngilizce</option>
+                <option value="de">Almanca</option>
+                <option value="fr">Fransızca</option>
+                <option value="es">İspanyolca</option>
+            </select>
+        </label>
+    </aside>
+
+    <main class="main">
+        <section id="deck" class="section">
+            <h2><mark>Kartlar</mark></h2>
+            <p class="section-hint">Videolardan kaydettiğin kelimeleri aralıklı tekrarla çalış: bildiğin kelime daha seyrek, bilmediğin daha sık sorulur.</p>
+
+            <!-- Deste durumu (saved.js renderDeckStats) -->
+            <div class="tiles">
+                <div class="tile"><span class="tile-label">Bugün tekrar</span><span class="tile-value" id="dueCount">0</span></div>
+                <div class="tile"><span class="tile-label">Yeni</span><span class="tile-value" id="newCount">0</span></div>
+                <div class="tile"><span class="tile-label">Öğreniliyor</span><span class="tile-value" id="learningCount">0</span></div>
+                <div class="tile"><span class="tile-label">Öğrenildi</span><span class="tile-value" id="learnedDeckCount">0</span></div>
+            </div>
+
+            <!-- Çalışma oturumu: tek tek kart, cevabı göster, puanla (store.js + saved.js) -->
+            <article class="panel study">
+                <div class="study-top">
+                    <label class="study-deck">Deste
+                        <select id="deckFilter" aria-label="Çalışılacak deste"></select>
+                    </label>
+                    <span class="study-counter" id="studyCounter" aria-live="polite"></span>
+                </div>
+                <div id="studyArea"></div>
+                <!-- "▶ Videodan dinle" basılınca kelimenin geçtiği cümle burada çalar -->
+                <div class="clip-box" id="clipBox" hidden>
+                    <div class="player-box"><div id="clipPlayer"></div></div>
+                </div>
+                <p class="study-shortcut">Kısayollar: Boşluk cevabı göster · 1 bilmedim · 2 zor · 3 bildim · 4 kolay · D videodan dinle</p>
+            </article>
+
+            <details class="panel lab">
+                <summary>Destedeki kartlar (<span id="savedCardsInfo">0</span>)</summary>
+                <ul id="savedCards" class="word-list"></ul>
+            </details>
+
+            <!-- function.js ders dosyasının ürettiği demo kartlar -->
+            <details class="panel lab">
+                <summary>Örnek kartlar (ders alıştırması)</summary>
+                <div id="cards" class="cards"></div>
+                <p class="deck-stats">
+                    <span class="chip"><b id="nounCount"></b> isim</span>
+                    <span class="chip"><b id="verbCount"></b> fiil</span>
+                    <span class="chip">Öğrenilen <b id="learnedCount"></b></span>
+                </p>
+            </details>
+        </section>
+    </main>
+</div>
+
+<script src="js/helpers.js"></script>
+<script src="js/course.js"></script>
+<script src="js/lessons/conditionals.js"></script>
+<script src="js/lessons/function.js"></script>
+<script src="js/store.js"></script>
+<script src="js/saved.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Sözlük · Kelime Defteri</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <h1 class="brand"><span class="brand-mark" aria-hidden="true">K</span> Kelime Defteri</h1>
+        <nav class="nav" aria-label="Sayfalar">
+            <a href="index.html">Bugün</a>
+            <a href="kartlar.html">Kartlar</a>
+            <a href="kelimeler.html">Kelimeler</a>
+            <a href="kitaplik.html">Kitaplık</a>
+            <a href="video.html">Video</a>
+            <a href="sozluk.html" aria-current="page">Sözlük</a>
+        </nav>
+        <label class="course">Kurs:
+            <select id="courseSelect" aria-label="Kurs dili">
+                <option value="en">İngilizce</option>
+                <option value="de">Almanca</option>
+                <option value="fr">Fransızca</option>
+                <option value="es">İspanyolca</option>
+            </select>
+        </label>
+    </aside>
+
+    <main class="main">
+        <section id="dictionary" class="section">
+            <h2><mark>Sözlük</mark></h2>
+            <p class="section-hint">İngilizce bir kelime ara: tanımı, okunuşu ve örnekleri burada; tam kayıt için tek tıkla Cambridge Dictionary.</p>
+
+            <article class="panel">
+                <form id="dictForm" class="inline-form">
+                    <input type="text" id="dictText" placeholder="ör. garden, pick up" aria-label="Aranacak kelime" autocomplete="off" autocapitalize="off" spellcheck="false">
+                    <button type="submit">Ara</button>
+                </form>
+                <div class="dict-history" id="dictHistory"></div>
+            </article>
+
+            <article class="panel dict-result" id="dictResult" hidden>
+                <!-- Başlık: kelime, okunuş, ses -->
+                <div class="dict-head">
+                    <h3 id="dictWord"></h3>
+                    <span class="dict-ipa" id="dictIpa"></span>
+                    <span class="dict-audio" id="dictAudio"></span>
+                    <button type="button" class="mini" id="dictSyllOpen" aria-pressed="false" title="Kelimeyi sondan başlayarak hece hece kur (backward build-up)" hidden>Hecele: sondan başa</button>
+                </div>
+
+                <!-- Uzun kelimeyi sondan başa hece hece kurma (heceler sunucudan: /api/syllables) -->
+                <div class="buildup word-buildup" id="wordBuildup" hidden>
+                    <div class="buildup-head">
+                        <span class="preview-label">Sondan başa hecele</span>
+                        <span class="shadow-counter" id="wbStep"></span>
+                    </div>
+                    <p class="buildup-text wb-text" id="wbText" aria-live="polite"></p>
+                    <div class="buildup-actions">
+                        <button type="button" class="mini" id="wbPrev">◀ Geri</button>
+                        <button type="button" class="mini" id="wbNext">Hece ekle ▶</button>
+                        <button type="button" class="mini" id="wbListen">🔊 Kelimeyi dinle</button>
+                        <button type="button" class="mini" id="wbSlow">🔊 Yavaş</button>
+                        <button type="button" class="mini" id="wbEnd">Kapat</button>
+                    </div>
+                    <p class="buildup-hint" id="wbHint"></p>
+                </div>
+
+                <!-- Cambridge Dictionary: sayfa başka sitelere gömülemiyor, yeni sekmede açılır -->
+                <div class="dict-cambridge">
+                    <span class="dict-label">Cambridge Dictionary'de aç</span>
+                    <a class="mini" id="dictCambridgeTr" target="_blank" rel="noopener">İngilizce–Türkçe ↗</a>
+                    <a class="mini" id="dictCambridgeEn" target="_blank" rel="noopener">İngilizce tanım ↗</a>
+                </div>
+
+                <!-- Türkçe anlam + kaydetme (store.js) -->
+                <div class="dict-save">
+                    <label class="field"><span>Türkçe anlamı</span>
+                        <input type="text" id="dictTr" placeholder="Anlamı yaz" autocomplete="off">
+                    </label>
+                    <div class="dict-save-buttons">
+                        <button type="button" class="mini" id="dictSaveList" aria-pressed="false">＋ Defter</button>
+                        <button type="button" class="mini" id="dictSaveCard" aria-pressed="false">＋ Kart</button>
+                    </div>
+                </div>
+                <p id="dictSaveResult"></p>
+
+                <p class="transcript-hint" id="dictStatus"></p>
+                <div class="dict-meanings" id="dictMeanings"></div>
+                <p class="lab-note" id="dictSource" hidden>Tanımlar: Free Dictionary API (Wiktionary, CC BY-SA). Cambridge'in kendi içeriği yalnızca kendi sitesinde görüntülenir.</p>
+            </article>
+
+            <!-- Kelimenin videolarda, dizi ve filmlerde geçtiği yerler -->
+            <article class="panel dict-videos" id="dictVideos" hidden>
+                <h3>Videolarda geçtiği yerler</h3>
+
+                <h4 class="dict-subtitle">Senin açtığın videolarda</h4>
+                <p class="transcript-hint" id="dictOwnStatus"></p>
+                <div class="dict-own" id="dictOwn"></div>
+
+                <h4 class="dict-subtitle">YouTube'daki gerçek konuşmalarda</h4>
+                <p class="dict-note">YouGlish, kelimenin geçtiği YouTube videolarını tam o cümleden oynatır (konuşmalar, röportajlar, film ve dizi sahneleri).</p>
+                <button type="button" class="mini" id="dictYouglishLoad">Örnekleri getir</button>
+                <p class="transcript-hint" id="dictYouglishStatus"></p>
+                <div class="dict-youglish" id="dictYouglishBox"><div id="dictYouglish"></div></div>
+
+                <h4 class="dict-subtitle">Dizi ve filmlerde</h4>
+                <p class="dict-note">Bu siteler sahneleri kendi sayfalarında oynatır; yeni sekmede açılır.</p>
+                <div class="dict-links">
+                    <a class="mini" id="dictPlayPhrase" target="_blank" rel="noopener">PlayPhrase.me ↗</a>
+                    <a class="mini" id="dictYarn" target="_blank" rel="noopener">Yarn ↗</a>
+                    <a class="mini" id="dictYouglishSite" target="_blank" rel="noopener">YouGlish ↗</a>
+                </div>
+            </article>
+        </section>
+    </main>
+</div>
+
+<script src="js/helpers.js"></script>
+<script src="js/course.js"></script>
+<script src="js/lessons/conditionals.js"></script>
+<script src="js/store.js"></script>
+<script src="js/sozluk.js"></script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+"""
+YouTube transkriptleri: video id çözme, altyazıyı cümlelere bölme, diskte saklama
+ve bir kelimenin kayıtlı videolarda geçtiği yerleri bulma.
+"""
+
+import html
+import json
+import logging
+import re
+import threading
+import urllib.request
+from urllib.parse import parse_qs, quote, urlparse
+
+from lemminflect import getAllInflections, getAllLemmas
+from youtube_transcript_api import (
+    CouldNotRetrieveTranscript,
+    InvalidVideoId,
+    IpBlocked,
+    NoTranscriptFound,
+    RequestBlocked,
+    TranscriptsDisabled,
+    VideoUnavailable,
+    YouTubeTranscriptApi,
+)
+
+from .config import TRANSCRIPT_DIR
+from .ipa import WORD, prepare_ipa, token_to_ipa
+
+log = logging.getLogger("kelime-defteri")
+
+ENGLISH = ["en", "en-US", "en-GB", "en-CA", "en-AU"]
+transcript_api = YouTubeTranscriptApi()
+transcript_cache = {}  # video id -> hazır yanıt (açılışta cache/transcripts klasöründen de dolar)
+transcript_lock = threading.Lock()
+
+
+# ===== YouTube linkinden video id =====
+
+VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
+
+
+def extract_video_id(link):
+    link = link.strip()
+    if VIDEO_ID.match(link):
+        return link
+
+    if "://" not in link:
+        link = "https://" + link
+    parsed = urlparse(link)
+    host = parsed.netloc.lower().removeprefix("www.").removeprefix("m.")
+    parts = [p for p in parsed.path.split("/") if p]
+
+    candidate = None
+    if host == "youtu.be" and parts:
+        candidate = parts[0]
+    elif host.endswith("youtube.com") or host.endswith("youtube-nocookie.com"):
+        if parts and parts[0] == "watch":
+            candidate = parse_qs(parsed.query).get("v", [None])[0]
+        elif len(parts) >= 2 and parts[0] in ("shorts", "embed", "live", "v"):
+            candidate = parts[1]
+
+    if candidate and VIDEO_ID.match(candidate):
+        return candidate
+    return None
+
+
+# ===== Transkripti cümlelere bölme =====
+
+SENTENCE_END = re.compile(r"[.?!][\"')\]]*$")
+MAX_WORDS = 40  # noktalama olmadan uzayan cümleleri böl
+
+
+def clean(text):
+    text = html.unescape(text).replace("\n", " ")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def build_lines(snippets):
+    pieces = [(s.start, s.duration, clean(s.text)) for s in snippets]
+    pieces = [p for p in pieces if p[2]]
+    if not pieces:
+        return []
+
+    # Otomatik altyazılarda noktalama olmaz; o zaman her parça bir satır
+    ended = sum(1 for _, _, text in pieces if SENTENCE_END.search(text))
+    has_punctuation = ended >= max(2, len(pieces) // 10)
+
+    lines = []
+    current = None
+    for start, duration, text in pieces:
+        if current is None:
+            current = {"start": start, "end": start + duration, "tokens": []}
+        current["tokens"].extend(text.split(" "))
+        current["end"] = start + duration
+
+        finished = (
+            not has_punctuation
+            or SENTENCE_END.search(text)
+            or len(current["tokens"]) >= MAX_WORDS
+        )
+        if finished:
+            lines.append(current)
+            current = None
+    if current:
+        lines.append(current)
+
+    prepare_ipa([t for line in lines for t in line["tokens"]])
+
+    result = []
+    for line in lines:
+        words = [{"text": t, "ipa": token_to_ipa(t)} for t in line["tokens"]]
+        result.append({
+            "start": round(line["start"], 2),
+            "end": round(line["end"], 2),
+            "text": " ".join(line["tokens"]),
+            "words": words,
+        })
+    return result
+
+
+# ===== Transkripti getirme =====
+
+class TranscriptError(Exception):
+    def __init__(self, message, status):
+        super().__init__(message)
+        self.message = message
+        self.status = status
+
+
+def get_transcript(video_id):
+    """Transkripti getirir (önbellekten ya da YouTube'dan). Hata olursa TranscriptError."""
+    if video_id in transcript_cache:
+        return transcript_cache[video_id]
+
+    try:
+        fetched = transcript_api.fetch(video_id, languages=ENGLISH)
+    except TranscriptsDisabled:
+        raise TranscriptError("Bu videoda altyazı/transkript kapalı.", 404)
+    except NoTranscriptFound:
+        raise TranscriptError("Bu videonun İngilizce transkripti yok.", 404)
+    except (VideoUnavailable, InvalidVideoId):
+        raise TranscriptError("Video bulunamadı ya da erişilemiyor.", 404)
+    except (RequestBlocked, IpBlocked):
+        raise TranscriptError("YouTube şu an istekleri engelliyor. Biraz sonra tekrar dene.", 503)
+    except CouldNotRetrieveTranscript as exc:
+        log.warning("Transkript alınamadı: %s", exc)
+        raise TranscriptError("Transkript alınamadı.", 502)
+
+    data = {
+        "videoId": video_id,
+        "title": fetch_title(video_id),
+        "language": fetched.language,
+        "generated": fetched.is_generated,
+        "lines": build_lines(fetched.snippets),
+    }
+    transcript_cache[video_id] = data
+    save_transcript(data)
+    return data
+
+
+# ===== Transkriptleri diskte saklama + kelimenin videolarda geçtiği yerler =====
+
+def fetch_title(video_id):
+    """Videonun başlığı (YouTube oEmbed; anahtar gerekmez). Alınamazsa boş."""
+    url = "https://www.youtube.com/oembed?format=json&url=" + quote(f"https://www.youtube.com/watch?v={video_id}", safe="")
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            return str(json.loads(response.read().decode("utf-8")).get("title", ""))[:200]
+    except Exception:
+        return ""
+
+
+def save_transcript(data):
+    try:
+        with transcript_lock:
+            TRANSCRIPT_DIR.mkdir(parents=True, exist_ok=True)
+            (TRANSCRIPT_DIR / f"{data['videoId']}.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except OSError as exc:
+        log.warning("Transkript diske yazılamadı: %s", exc)
+
+
+def load_transcripts():
+    """Sunucu açılırken daha önce kaydedilmiş transkriptleri belleğe alır."""
+    if not TRANSCRIPT_DIR.is_dir():
+        return
+    for file in TRANSCRIPT_DIR.glob("*.json"):
+        try:
+            data = json.loads(file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict) and VIDEO_ID.match(str(data.get("videoId", ""))) and isinstance(data.get("lines"), list):
+            transcript_cache.setdefault(data["videoId"], data)
+
+
+def word_forms(word):
+    """Kelimenin bütün çekimleri: run -> {run, runs, ran, running}. Aranan çekimliyse (running) köküne inilir."""
+    forms = {word}
+    lemmas = {word}
+    for group in getAllLemmas(word).values():
+        lemmas.update(lemma.lower() for lemma in group)
+    for lemma in lemmas:
+        forms.add(lemma)
+        for group in getAllInflections(lemma).values():
+            forms.update(form.lower() for form in group)
+    return forms
+
+
+MAX_HITS_PER_VIDEO = 6
+MAX_VIDEOS = 30
+
+
+def find_occurrences(query):
+    """Kayıtlı transkriptlerde kelimeyi (ya da "pick up" gibi ifadeyi) arar.
+    İlk kelimenin çekimleri de sayılır (picked up). Araya kelime giren kullanımlar (pick it up) bulunmaz."""
+    parts = [p.lower() for p in WORD.findall(query.replace("’", "'"))]
+    if not parts:
+        return None
+    first_forms = word_forms(parts[0])
+    rest = parts[1:]
+    videos = []
+    total = 0
+    for data in list(transcript_cache.values()):
+        hits = []
+        count = 0
+        for index, line in enumerate(data["lines"]):
+            tokens = [(m.group().lower(), m.start(), m.end()) for m in WORD.finditer(line["text"].replace("’", "'"))]
+            for i, (token, begin, _) in enumerate(tokens):
+                if token not in first_forms:
+                    continue
+                if [t[0] for t in tokens[i + 1:i + 1 + len(rest)]] != rest:
+                    continue
+                count += 1
+                if len(hits) < MAX_HITS_PER_VIDEO and (not hits or hits[-1]["line"] != index):
+                    end = tokens[i + len(rest)][2]
+                    hits.append({"line": index, "start": line["start"], "text": line["text"], "span": [begin, end]})
+        if count:
+            total += count
+            videos.append({"videoId": data["videoId"], "title": data.get("title", ""), "count": count, "hits": hits})
+    videos.sort(key=lambda video: -video["count"])
+    return {
+        "word": " ".join(parts),
+        "forms": sorted(first_forms),
+        "total": total,
+        "searched": len(transcript_cache),
+        "videos": videos[:MAX_VIDEOS],
+    }
