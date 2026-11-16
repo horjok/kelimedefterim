@@ -2,7 +2,8 @@
 // Akış: seviye seç → kartlar akar (biliyorum / bilmiyorum) → bilinmeyen 4 kelime seçilir → inceleme →
 //       4 aşama: Anlam (çoktan seçmeli, iki yönlü) · Telaffuz (dinle, seç) · Yazım (harf yerleştir) · Cümle (boşluk doldur).
 //       Yanlış cevaplanan kelime aynı aşamanın sonunda yeniden sorulur. Sonunda kelimeler kartlara eklenir (store.js).
-// Kelimeler: POST /api/wordbank { level, count, exclude } (backend/wordbank.py) ya da "Defterim" = kayıtlı kelimeler.
+// Kelimeler: POST /api/wordbank { level, count, exclude, topic } (backend/wordbank.py; level "PV" = phrasal verb'ler)
+// ya da "Defterim" = kayıtlı kelimeler ve phrasal verb'ler.
 // Ortak parçalar quiz.js içinde: ieltsElement, ieltsApi, ieltsNorm.
 // localStorage: "pekistir:level", "pekistir:known" { seviye: [bilinen kelimeler] }, "pekistir:stats" { rounds, words }.
 
@@ -19,6 +20,7 @@ let pkLevel = "B1";
 let pkTopic = "";      // kelime konusu anahtarı; boş = karışık (seviyenin bütün kelimeleri)
 let pkTopics = [];     // data/kelime-konulari.json: [{ key, tr, words: { B1: [], B2: [], C1: [] } }]
 const PK_LIST = "liste";  // konu seçimindeki özel değer: içe aktarılmış kendi kelime listen
+const PK_PHRASAL = "PV";  // seviye düğmesindeki özel değer: phrasal verb'ler (backend/phrasal_verbs.py)
 let pkList = {};       // GET /api/wordbank/sources: { name, levels: { B2: adet, C1: adet } }
 let pkPool = [];       // gösterilmeyi bekleyen kelimeler
 let pkSeen = [];       // bu oturumda gösterilenler (çeldirici olarak da kullanılır)
@@ -150,17 +152,24 @@ function pkPaintStart() {
     if (pkLevel === "defter") {
         let count = savedAll().filter((entry) => entry.tr).length;
         note.textContent = `Defterindeki ${count} kelimeden bilmediklerini seçersin. En az ${PK_NEEDED} kelime gerekir.`;
+    } else if (pkLevel === PK_PHRASAL) {
+        let known = pkKnownList().length;
+        // Anlamlar backend/phrasal_verbs.py'de elle yazıldı; örnek sözlükten, yoksa Gemini yazar (wordbank.py)
+        note.textContent = "Sık kullanılan phrasal verb'ler (give up, look after, put up with…) karışık sırayla gelir. " +
+            "Türkçe anlamlar elle yazıldı; örnek cümleler sözlükten gelir, eksik ya da uygunsuz olanı yapay zekâ yazar. " +
+            "Yazım aşamasında kelime araları hazırdır, yalnızca harfleri yerleştirirsin." +
+            (known ? ` "Biliyorum" dediğin ${known} phrasal verb yeniden gösterilmez.` : "");
     } else {
         let known = pkKnownList().length;
         let topic = pkTopics.find((entry) => entry.key === pkActiveTopic());
         let fromList = pkActiveTopic() === PK_LIST;
-        // Hiçbir kaynakta yapay zekâ kullanılmaz: anlam otomatik çeviri, örnek cümle sözlükten (backend/wordbank.py)
+        // Anlam otomatik çeviri, örnek cümle sözlükten; ikisini de Gemini denetler ve düzeltir (backend/wordbank.py review_words)
         note.textContent = (fromList
             ? `${pkList.name || "Kelime listen"} içindeki ${pkLevel} kelimeleri karışık sırayla gelir.`
             : topic
                 ? `"${topic.tr}" konusundaki ${pkLevel} kelimeleri karışık sırayla gelir.`
                 : `${pkLevel} seviyesindeki kelimeler karışık sırayla gelir.`) +
-            " Anlamlar otomatik çeviri, örnek cümleler Wiktionary kaynaklı sözlükten gelir; hata içerebilir, bazı kelimelerde örnek cümle olmaz." +
+            " Anlamlar otomatik çeviriden, örnek cümleler Wiktionary kaynaklı sözlükten gelir; yapay zekâ ikisini de denetler, yanlış anlamı düzeltir ve eksik cümleyi yazar. Yine de hata içerebilir." +
             (known ? ` Bu seviyede "biliyorum" dediğin ${known} kelime yeniden gösterilmez.` : "");
     }
     let stats = pkRead("pekistir:stats", {});
@@ -179,7 +188,8 @@ function pkFromSaved(entry) {
 function pkFill() {
     let skip = new Set([...pkKnownList(), ...pkSeen.map((item) => item.word), ...pkPool.map((item) => item.word)]);
     if (pkLevel === "defter") {
-        let fresh = savedAll().filter((entry) => entry.tr && entry.kind === "word" && !skip.has(entry.word)).map(pkFromSaved);
+        // Defterdeki kelimeler ve phrasal verb'ler birlikte gelir
+        let fresh = savedAll().filter((entry) => entry.tr && entry.word && !skip.has(entry.word)).map(pkFromSaved);
         pkPool.push(...pkShuffle(fresh));
         return Promise.resolve(fresh.length);
     }
@@ -512,15 +522,30 @@ function pkChoices(options, correct) {
     box.appendChild(group);
 }
 
+// Phrasal verb gibi çok kelimeli ifadeler: "give up" → harfler "giveup", boşluk kutucuk olmaz.
+// Yazılan harfleri kelime sınırlarından yeniden böler: ("giveup", "give up") → "give up"
+function pkSpaced(typed, phrase) {
+    let parts = [];
+    let at = 0;
+    for (let piece of phrase.split(" ")) {
+        parts.push(typed.slice(at, at + piece.length));
+        at += piece.length;
+    }
+    return parts.join(" ");
+}
+
 // Yazım: karışık harf kutucukları. Dokununca sıradaki boş yere gider; yerleşmiş harfe dokununca geri döner.
+// Çok kelimeli ifadede boş yerler kelime kelime gruplanır, harfler yine tek sırayla dolar.
 function pkTiles(item) {
     let box = document.getElementById("pkAnswer");
-    let word = item.word;
+    let word = item.word.replace(/\s+/g, "");
+    let groups = item.word.split(/\s+/).map((piece) => piece.length);
     let letters = pkShuffle(word.split(""));
     if (letters.join("") === word && word.length > 1) {
         letters.reverse();
     }
-    let slots = ieltsElement("div", "pk-slots");
+    // 7 harften uzun bir kelime grubu telefonda tek satıra sığsın diye kutucuklar küçülür
+    let slots = ieltsElement("div", groups.length > 1 && Math.max(...groups) > 6 ? "pk-slots long" : "pk-slots");
     let bank = ieltsElement("div", "pk-bank");
     let placed = [];   // yerleşen kutucuklar, sırayla
     let tiles = letters.map(function (letter) {
@@ -533,7 +558,16 @@ function pkTiles(item) {
 
     function paint() {
         slots.replaceChildren();
+        let group = null;
+        let left = 0;  // geçerli kelime grubunda kalan boş yer
+        let groupIndex = 0;
         for (let i = 0; i < word.length; i++) {
+            if (left === 0) {
+                group = ieltsElement("span", "pk-slot-word");
+                slots.appendChild(group);
+                left = groups[groupIndex++];
+            }
+            left--;
             let slot = ieltsElement("button", placed[i] ? "pk-slot filled" : "pk-slot", placed[i] ? placed[i].textContent : "");
             slot.type = "button";
             slot.setAttribute("aria-label", placed[i] ? `${placed[i].textContent} harfini geri al` : "boş");
@@ -547,7 +581,7 @@ function pkTiles(item) {
                     paint();
                 });
             }
-            slots.appendChild(slot);
+            group.appendChild(slot);
         }
     }
 
@@ -560,7 +594,7 @@ function pkTiles(item) {
         paint();
         if (placed.length === word.length) {
             let typed = placed.map((entry) => entry.textContent).join("");
-            pkResolve(typed === word, typed === word ? "" : typed);
+            pkResolve(typed === word, typed === word ? "" : pkSpaced(typed, item.word));
         }
     }
 
@@ -573,6 +607,10 @@ function pkTiles(item) {
             placed.pop().disabled = false;
             paint();
             event.preventDefault();
+            return;
+        }
+        if (event.key === " ") {
+            event.preventDefault();  // çok kelimeli ifadede boşluk yazılmaz; kelime araları hazır
             return;
         }
         let tile = tiles.find((entry) => !entry.disabled && entry.textContent === event.key.toLowerCase());
@@ -624,11 +662,14 @@ function pkFinish() {
             mistakes === 0 ? "hatasız" : `${mistakes} yanlış ya da ipucu`);
         list.appendChild(pkWordCard(item, chip));
         // Unutmamak için: kelime deftere ve kartlara eklenir; aralıklı tekrar Kartlar sayfasında sürer
-        let key = savedKey("word", item.word);
+        // Boşluklu ifade (phrasal verb) defterde video sayfasındaki gibi "phrasal" türüyle saklanır (anahtar p:…)
+        let kind = item.word.includes(" ") ? "phrasal" : "word";
+        let key = savedKey(kind, item.word);
         let existing = savedGet(key);
         if (!existing || !existing.inCards) {
             let ok = savedAdd({
-                key: key, kind: "word", word: item.word, tr: item.tr, ipa: item.ipa, pos: item.pos, level: item.level,
+                key: key, kind: kind, word: item.word, tr: item.tr, ipa: item.ipa,
+                pos: kind === "phrasal" ? "phrasal verb" : item.pos, level: kind === "phrasal" ? "" : item.level,
                 example: item.example, videoId: "", videoTitle: "", start: 0
             }, "inCards");
             if (ok) {

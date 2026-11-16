@@ -24,14 +24,6 @@
             <a href="gramer.html">Gramer</a>
             <a href="ielts.html">IELTS</a>
         </nav>
-        <label class="course">Kurs:
-            <select id="courseSelect" aria-label="Kurs dili">
-                <option value="en">İngilizce</option>
-                <option value="de">Almanca</option>
-                <option value="fr">Fransızca</option>
-                <option value="es">İspanyolca</option>
-            </select>
-        </label>
     </aside>
 
     <main class="main">
@@ -83,48 +75,12 @@
                 </form>
                 <p id="wordAddResult"></p>
             </article>
-
-            <!-- loop.js ve advanced.js ders dosyalarının demo içeriği -->
-            <details class="panel lab">
-            <summary>Ders alıştırmaları (örnek liste, kelime ekleme, quiz)</summary>
-            <div class="grid grid-2">
-                <article class="panel">
-                    <h3>Örnek kelime listesi</h3>
-                    <ul id="liste" class="word-list"></ul>
-                </article>
-
-                <div class="grid">
-                    <article class="panel">
-                        <h3>Yeni kelime ekle</h3>
-                        <label class="field"><span>Kelime</span><input type="text" id="newText" placeholder="ör. house"></label>
-                        <label class="field"><span>Anlamı</span><input type="text" id="newMeaning" placeholder="ör. ev"></label>
-                        <div class="actions">
-                            <button type="button" onclick="addWord()">Kelimeyi ekle</button>
-                        </div>
-                        <p id="addResult"></p>
-                    </article>
-
-                    <article class="panel">
-                        <h3>Son quiz</h3>
-                        <p class="attempts" id="sonuclar"></p>
-                        <p>3 doğruya <b id="denemeSayisi"></b> denemede ulaştın.</p>
-                        <table class="stats">
-                            <tr><td>Soru</td><td id="cevap"></td></tr>
-                            <tr><td>Sonuç</td><td id="cevapSonucu"></td></tr>
-                        </table>
-                    </article>
-                </div>
-            </div>
-            </details>
         </section>
     </main>
 </div>
 
 <script src="js/helpers.js"></script>
 <script src="js/course.js"></script>
-<script src="js/lessons/conditionals.js"></script>
-<script src="js/lessons/loop.js"></script>
-<script src="js/lessons/advanced.js"></script>
 <script src="js/store.js"></script>
 <script src="js/saved.js"></script>
 </body>

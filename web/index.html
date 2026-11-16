@@ -24,14 +24,6 @@
             <a href="gramer.html">Gramer</a>
             <a href="ielts.html">IELTS</a>
         </nav>
-        <label class="course">Kurs:
-            <select id="courseSelect" aria-label="Kurs dili">
-                <option value="en">İngilizce</option>
-                <option value="de">Almanca</option>
-                <option value="fr">Fransızca</option>
-                <option value="es">İspanyolca</option>
-            </select>
-        </label>
     </aside>
 
     <main class="main">
@@ -67,80 +59,12 @@
                     <div id="todayVideos"></div>
                 </article>
             </div>
-
-            <!-- variables.js, operators.js, conditionals.js ve advanced.js ders dosyalarının demo içeriği -->
-            <details class="panel lab">
-            <summary>Ders alıştırmaları (hızlı tekrar, istatistikler, örnek günün kelimesi)</summary>
-            <div class="grid">
-                <article class="panel hero">
-                    <div>
-                        <h3>Hızlı tekrar</h3>
-                        <p>Her kelime 1,5 saniye görünür, ardından Türkçe anlamı gelir.</p>
-                        <div class="hero-actions">
-                            <button type="button" id="studyButton" onclick="startStudySession()">Tekrarı başlat</button>
-                            <span id="studyProgress" class="progress"></span>
-                        </div>
-                    </div>
-                    <div class="index-card">
-                        <div id="studyDisplay" class="study-display"></div>
-                    </div>
-                </article>
-
-                <div class="tiles">
-                    <div class="tile">
-                        <span class="tile-label">Seri</span>
-                        <span class="tile-value"><span id="seri"></span> gün</span>
-                    </div>
-                    <div class="tile">
-                        <span class="tile-label">Puan</span>
-                        <span class="tile-value" id="operator-puan"></span>
-                    </div>
-                    <div class="tile">
-                        <span class="tile-label">Başarı</span>
-                        <span class="tile-value" id="basariYuzdesi"></span>
-                    </div>
-                    <div class="tile">
-                        <span class="tile-label">Seviye</span>
-                        <span class="tile-value" id="seviyeSonucu"></span>
-                        <span class="tile-sub"><span id="kosul-puan"></span> puan</span>
-                    </div>
-                </div>
-
-                <div class="grid grid-2">
-                    <article class="panel">
-                        <h3>Günün kelimesi</h3>
-                        <p class="wod-word" id="kelime"></p>
-                        <p class="wod-meaning" id="anlam"></p>
-                        <p class="meta">
-                            <span class="chip">Seviye <b id="seviye"></b></span>
-                            <span class="chip">Öğrenildi <b id="ogrenildiMi"></b></span>
-                        </p>
-                    </article>
-
-                    <article class="panel">
-                        <h3>Bu haftanın özeti</h3>
-                        <table class="stats">
-                            <tr><td>Toplam soru</td><td id="toplamSoru"></td></tr>
-                            <tr><td>Doğru − yanlış</td><td id="fark"></td></tr>
-                            <tr><td>17 günde tam hafta</td><td id="tamHafta"></td></tr>
-                            <tr><td>Artan gün</td><td id="artanGun"></td></tr>
-                            <tr><td>Sınavı geçti</td><td id="gectiMi"></td></tr>
-                            <tr><td>Rozet kazandı</td><td id="rozetMi"></td></tr>
-                        </table>
-                    </article>
-                </div>
-            </div>
-            </details>
         </section>
     </main>
 </div>
 
 <script src="js/helpers.js"></script>
 <script src="js/course.js"></script>
-<script src="js/lessons/variables.js"></script>
-<script src="js/lessons/operators.js"></script>
-<script src="js/lessons/conditionals.js"></script>
-<script src="js/lessons/advanced.js"></script>
 <script src="js/store.js"></script>
 <script src="js/saved.js"></script>
 gg</body>

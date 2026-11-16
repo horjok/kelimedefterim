@@ -11,7 +11,14 @@ Pekiştir sayfası için seviyeli kelime haznesi.
   yazıldı). Konu seçilirse adaylar sıklık listesinden değil o konunun listesinden gelir.
 - Kendi kelime listen (topic = "liste"): backend/import_wordlist.py ile içe aktarılan PDF listesi
   (cache/wordlists/liste.json; depoya girmez).
+- Phrasal verb'ler (level = "PV"; kullanıcı isteği, 16 Kasım 2026): adaylar phrasal_verbs.py'deki elle yazılmış
+  sözlükten, Türkçe anlam da oradan gelir (çeviriye gönderilmez, Gemini değiştirmez); örnek sözlükten, yoksa Gemini
+  yazar. cache/wordbank/PV.json.
 - get_words(level, count, exclude, topic) → haznede yeterli kelime yoksa bir kez doldurur, rastgele kelime döndürür.
+- Denetim (review_words): otomatik hazırlanan kayıtları Gemini denetler (kullanıcı istekleri, 16 Kasım 2026):
+  yanlış Türkçe anlamı ve türü düzeltir ("trSrc": "gemini"), eksik ya da uygunsuz örnek cümleyi yeniden yazar
+  ("exSrc": "gemini"). Denetlenen kayıt "chk": 1 alır. Gemini'ye ulaşılamazsa kayıt olduğu gibi kalır ve
+  kartlar yine gelir.
 Anlamlar otomatik çeviridir, hata içerebilir. Haznede daha önce Gemini ile üretilmiş kayıtlar durabilir ("src" alanı yok).
 """
 
@@ -27,8 +34,10 @@ from concurrent.futures import ThreadPoolExecutor
 from wordfreq import top_n_list, zipf_frequency
 
 from .config import CACHE_DIR, WEB_DIR
-from .gemini import GeminiError, as_text   # GeminiError: /api/* hata sınıfı olarak (istek Gemini'ye gitmez)
+from .gemini import GeminiError, as_text, generate_json   # Gemini yalnızca hazır kayıtları denetler (review_words)
 from .ipa import word_to_ipa
+from .lessons import TEACHER_PERSONA
+from .phrasal_verbs import PHRASAL_VERBS
 from .vocab import LEVELS, POS_NAMES, analyze_word, cache_lock, google_translate, is_basic, meaning_of, save_translations, translate_all, translation_query, translations
 
 BANK_DIR = CACHE_DIR / "wordbank"
@@ -118,6 +127,21 @@ def list_words(level):
     return [(word, pos) for word, pos in words if isinstance(word, str) and WORD_ONLY.match(word) and word not in BLOCKED]
 
 
+PHRASAL_LEVEL = "PV"     # get_words(level=...) için özel seviye: phrasal verb'ler (cache/wordbank/PV.json)
+PHRASE_ONLY = re.compile(r"^[a-z]+( [a-z]+){1,3}$")
+
+
+def phrasal_pool():
+    """phrasal_verbs.py'deki elle yazılmış phrasal verb'ler: [(ifade, "VERB")]. CEFR seviyeleri olmadığı için tek havuz."""
+    return [(phrase, "VERB") for phrase in PHRASAL_VERBS if PHRASE_ONLY.match(phrase)]
+
+
+def phrase_ipa(phrase):
+    """Çok kelimeli ifadenin IPA'sı (kelime kelime); bir kelime sözlükte yoksa boş."""
+    pieces = [word_to_ipa(word) for word in phrase.split()]
+    return " ".join(pieces) if all(pieces) else ""
+
+
 def fetch_example(entry):
     """Free Dictionary API'den kelimenin örnek cümlesi; kelime cümlede aynı biçimde tam bir kez geçmeli.
     Uygun örnek yoksa "", istek başarısız olduysa (ağ hatası, sınırlama) None döner: None sonra yeniden denenir."""
@@ -136,6 +160,9 @@ def fetch_example(entry):
             for definition in meaning.get("definitions", []):
                 example = as_text(definition.get("example"), 200)
                 if not 4 <= len(example.split()) <= 20:
+                    continue
+                # Sözlükteki bazı "örnekler" kaynak alıntısıdır (yıl, tırnak, parantez) ya da kaba kelime içerir: atla
+                if re.search(r"\d{4}|[\"“”()\[\]]", example) or BLOCKED & set(re.findall(r"[a-z]+", example.lower())):
                     continue
                 if len(re.findall(rf"\b{re.escape(word)}\b", example, flags=re.IGNORECASE)) != 1:
                     continue
@@ -185,6 +212,108 @@ def retry_examples(level, words):
     save_bank(level)
 
 
+REVIEW_BATCH = 12        # Gemini'ye bir seferde denetlettirilen kelime
+REVIEW_TRIES = 2         # bir kelime için en çok bu kadar denenir (model atlarsa sonsuza dek sorulmasın)
+REVIEW_PROMPT = """Your learner is building vocabulary at CEFR level {level}.{topic} The entries below were prepared
+automatically: the Turkish meaning comes from machine translation of the single word (no context) and the example
+sentence from a dictionary. Check and repair each entry.
+
+Return ONLY a JSON object with this exact shape:
+{{"words": [{{"word": "the word exactly as given", "pos": "noun | verb | adjective | adverb", "tr": "Turkish meaning", "example": "English sentence", "exampleTr": "Turkish translation of the sentence"}}]}}
+
+Rules:
+- "tr": the most common, everyday meaning of the word{topic_rule}, in 1 to 3 Turkish words (verbs as infinitives
+  ending in -mek / -mak). If the given Turkish meaning is already right, return it unchanged. Replace it when it is
+  wrong, unnatural, a rare sense, or not a real Turkish word. No explanations, no alternatives separated by slashes.
+- "pos": the part of speech that matches your "tr".
+- "example": if the given example is a natural sentence that shows the word in the meaning of your "tr", return it
+  unchanged. Otherwise (or when it says NONE) write a new natural sentence of 6 to 14 words at {level} level.
+  Either way the sentence must contain the word EXACTLY as given (same form, not inflected) exactly once.
+- "exampleTr": a natural, correct Turkish translation of the sentence you return.
+- Leave a word out completely only if it is a person's name, a place or brand name, vulgar, or not a real English word.
+
+Entries (word | part of speech | Turkish meaning | example):
+{words}"""
+POS_FROM_MODEL = {"verb": "fiil", "noun": "isim", "adjective": "sıfat", "adverb": "zarf"}
+# Phrasal verb'lerde Türkçe anlam elle yazıldı (phrasal_verbs.py) ve değiştirilmez; model yalnızca örneği denetler.
+PHRASAL_PROMPT = """Your learner is studying common English phrasal verbs (around B1-B2 level). Each entry below has a
+hand-written Turkish meaning (several senses are separated by ";") and, when available, an example sentence taken from
+a dictionary. Check and repair the examples.
+
+Return ONLY a JSON object with this exact shape:
+{{"words": [{{"word": "the phrasal verb exactly as given", "example": "English sentence", "exampleTr": "Turkish translation of the sentence"}}]}}
+
+Rules:
+- "example": if the given example is a natural, everyday sentence that clearly shows one of the given Turkish
+  meanings, return it unchanged. Otherwise (or when it says NONE) write a new natural sentence of 6 to 14 words at
+  B1 level that shows the first Turkish meaning.
+- The sentence must contain the phrasal verb EXACTLY as given, exactly once: the words next to each other in the given
+  order with nothing between them, in the base form (for example after "to", "can", "will", "don't", or as an
+  imperative), not inflected.
+- "exampleTr": a natural, correct Turkish translation of the sentence you return.
+
+Entries (phrasal verb | Turkish meaning | example):
+{words}"""
+
+
+def review_words(level, words, topic=""):
+    """Otomatik hazırlanmış kayıtları (src = "sozluk") Gemini'ye denetletir: Türkçe anlamı ve türü düzeltir,
+    eksik ya da uygunsuz örnek cümleyi yeniden yazar (kullanıcı istekleri, 16 Kasım 2026: "boşta kalan kısımları
+    Gemini ile doldur", "anlamları da denetlet"). Denetlenen kayıt "chk": 1 alır ve bir daha sorulmaz.
+    Gemini'ye ulaşılamazsa False döner; kayıtlar olduğu gibi kalır."""
+    bank = load_bank(level)
+    pending = [word for word in words
+               if bank[word].get("src") == "sozluk" and not bank[word].get("chk") and bank[word].get("gap", 0) < REVIEW_TRIES]
+    pending = pending[:REVIEW_BATCH]
+    if not pending:
+        return True
+    phrasal = level == PHRASAL_LEVEL
+    if phrasal:
+        prompt = PHRASAL_PROMPT.format(words="\n".join(
+            f"{word} | {bank[word]['tr']} | {bank[word].get('example') or 'NONE'}" for word in pending))
+    else:
+        listing = "\n".join(
+            f"{word} | {bank[word].get('pos') or '?'} | {bank[word]['tr']} | {bank[word].get('example') or 'NONE'}" for word in pending)
+        prompt = REVIEW_PROMPT.format(
+            level=level, words=listing,
+            topic=f' The words belong to the vocabulary topic "{topic}".' if topic else "",
+            topic_rule=f' within the topic "{topic}"' if topic else "")
+    try:
+        raw, _model = generate_json(prompt, temperature=0.2, system=TEACHER_PERSONA)
+    except GeminiError:
+        return False  # anahtar yok, kota, ağ: kayıtlar denetlenmeden kalır, sonra yeniden denenir
+    for word in pending:
+        bank[word]["gap"] = bank[word].get("gap", 0) + 1
+    for item in (raw.get("words") if isinstance(raw, dict) else None) or []:
+        if not isinstance(item, dict):
+            continue
+        word = " ".join(as_text(item.get("word"), 40).lower().split())
+        if word not in pending or bank[word].get("chk"):
+            continue
+        entry = bank[word]
+        tr = "" if phrasal else as_text(item.get("tr"), 60)
+        if tr and tr.lower() != word and "/" not in tr:
+            tr = tr[0].lower() + tr[1:]
+            if tr != entry["tr"]:
+                entry["tr"] = tr
+                entry["trSrc"] = "gemini"  # anlam yapay zekâ tarafından düzeltildi
+            pos = POS_FROM_MODEL.get(as_text(item.get("pos"), 12).lower())
+            if pos:
+                entry["pos"] = pos
+        example = as_text(item.get("example"), 200)
+        # Kelime cümlede tam olarak bir kez, aynı biçimde geçmeli (boşluk doldurma sorusu bunu kullanır)
+        if 4 <= len(example.split()) <= 20 and len(re.findall(rf"\b{re.escape(word)}\b", example, flags=re.IGNORECASE)) == 1:
+            if example != entry.get("example"):
+                entry["example"] = example
+                entry["exSrc"] = "gemini"  # örnek cümle yapay zekâ üretimi
+            entry["exampleTr"] = as_text(item.get("exampleTr"), 240) or entry.get("exampleTr", "")
+        entry["chk"] = 1
+        entry.pop("retry", None)
+        entry.pop("gap", None)
+    save_bank(level)
+    return True
+
+
 def fill_from_dictionary(level, exclude, pool, frequent=False):
     """Adaylardan bir grup kelimeyi Gemini'siz hazırlar: anlam çeviri uç noktasından, örnek sözlükten.
     frequent: adaylar sıklık sırasındaysa (karışık mod) en sık 400 yeni kelimeden seçilir.
@@ -196,7 +325,8 @@ def fill_from_dictionary(level, exclude, pool, frequent=False):
     if frequent:
         fresh = fresh[:400]
     batch = random.sample(fresh, min(DICT_BATCH, len(fresh)))
-    error = translate_all([translation_query(word, pos) for word, pos in batch])
+    phrasal = level == PHRASAL_LEVEL  # phrasal verb'lerin anlamı elle yazıldı; çeviriye gönderilmez
+    error = None if phrasal else translate_all([translation_query(word, pos) for word, pos in batch])
     with ThreadPoolExecutor(max_workers=DICT_WORKERS) as workers:
         examples = dict(zip((word for word, _pos in batch), workers.map(fetch_example, batch)))
     for word, pos in batch:  # başarısız istekler (None) bir kez de tek tek denenir
@@ -207,12 +337,13 @@ def fill_from_dictionary(level, exclude, pool, frequent=False):
     translate_examples([text for text in examples.values() if text])
     added = 0
     for word, pos in batch:
-        tr = meaning_of(word, pos)
+        tr = PHRASAL_VERBS.get(word, "") if phrasal else meaning_of(word, pos)
         if not tr:
             continue  # çeviri gelmedi ya da kelime aynen döndü
         example = examples.get(word)
         bank[word] = {
-            "tr": tr[0].lower() + tr[1:], "pos": POS_NAMES.get(pos, ""), "ipa": word_to_ipa(word),
+            "tr": tr[0].lower() + tr[1:], "pos": "phrasal verb" if phrasal else POS_NAMES.get(pos, ""),
+            "ipa": phrase_ipa(word) if phrasal else word_to_ipa(word),
             "example": example or "", "exampleTr": translations.get("§" + example, "") if example else "",
             "zipf": round(zipf_frequency(word, "en"), 2), "src": "sozluk",
         }
@@ -243,14 +374,18 @@ def save_bank(level):
 
 def get_words(level, count, exclude=(), topic=""):
     """Seviyeden rastgele `count` kelime: [{word, tr, pos, ipa, example, exampleTr, level}]. exclude: istenmeyen kelimeler."""
-    if level not in LEVELS:
-        raise GeminiError("Seviye A1, A2, B1, B2, C1 ya da C2 olmalı.", 400, "bad_request")
+    if level not in LEVELS and level != PHRASAL_LEVEL:
+        raise GeminiError("Seviye A1, A2, B1, B2, C1, C2 ya da PV (phrasal verbs) olmalı.", 400, "bad_request")
     count = max(1, min(MAX_COUNT, count))
-    exclude = {str(word).lower() for word in exclude}
+    exclude = {" ".join(str(word).lower().split()) for word in exclude}
+    phrasal = level == PHRASAL_LEVEL
+    if phrasal:
+        topic = ""  # phrasal verb'lerin konusu yok
     with bank_lock:
         bank = load_bank(level)
         # topic: kelime konusu anahtarı (yalnızca B1, B2, C1 listeleri var); boşsa seviyenin bütün kelimeleri
-        pool = list_words(level) if topic == LIST_TOPIC else topic_words(topic, level) if topic else None
+        pool = (phrasal_pool() if phrasal else list_words(level) if topic == LIST_TOPIC
+                else topic_words(topic, level) if topic else None)
         wanted = None if pool is None else {word for word, _pos in pool}
 
         def usable():
@@ -272,9 +407,11 @@ def get_words(level, count, exclude=(), topic=""):
                 raise error
             raise GeminiError("Burada gösterilecek yeni kelime kalmadı. Başka bir konu ya da seviye seç.", 404, "no_content")
         chosen = random.sample(available, min(count, len(available)))
-        retry_examples(level, chosen)
+        # Otomatik hazırlanan kayıtları Gemini denetler (anlam, tür, örnek); ona ulaşılamazsa sözlük bir kez daha denenir
+        if not review_words(level, chosen, "" if topic == LIST_TOPIC else topic):
+            retry_examples(level, chosen)
         return {
             "level": level, "topic": topic, "bankSize": len(bank),
             "candidates": len(candidates()[level]) if pool is None else len(pool),
-            "words": [{"word": word, "level": level, **{k: v for k, v in bank[word].items() if k not in ("zipf", "retry")}} for word in chosen],
+            "words": [{"word": word, "level": "" if phrasal else level, **{k: v for k, v in bank[word].items() if k not in ("zipf", "retry", "gap", "chk")}} for word in chosen],
         }
