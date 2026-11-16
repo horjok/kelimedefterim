@@ -13,3 +13,6 @@ _yedek/
 # Ortam değişkenleri (vercel env pull gizli anahtarları buraya yazar)
 .env
 .env.*
+
+.vercel
+.env*.local
