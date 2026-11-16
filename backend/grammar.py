@@ -1,17 +1,16 @@
 """
 Videodaki gramer konularını Gemini API ile çıkarır (istek katmanı: gemini.py).
-Sonuçlar cache/grammar.json dosyasında saklanır: aynı video için API ikinci kez çağrılmaz.
+Sonuçlar önbellekte (storage: cache/grammar.json ya da Redis) saklanır: aynı video için API ikinci kez çağrılmaz.
 """
 
-import json
 import threading
 
-from .config import CACHE_DIR
+from . import storage
 from .gemini import GeminiError, as_text, generate_json
 
 GrammarError = GeminiError  # eski ad; app.py bu adla yakalar
 
-CACHE_FILE = CACHE_DIR / "grammar.json"
+CACHE_FILE = "grammar.json"  # storage adı
 LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
 MAX_LINES = 160    # çok uzun videolarda yalnızca baştaki bu kadar cümle gönderilir
@@ -22,18 +21,15 @@ cache_lock = threading.Lock()
 # ===== Önbellek =====
 
 def load_cache():
-    try:
-        return json.loads(CACHE_FILE.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
+    data = storage.read(CACHE_FILE, {})
+    return data if isinstance(data, dict) else {}
 
 
 grammar_cache = load_cache()  # video id -> {"model": ..., "topics": [...]}
 
 
 def save_cache():
-    CACHE_FILE.parent.mkdir(exist_ok=True)
-    CACHE_FILE.write_text(json.dumps(grammar_cache, ensure_ascii=False, indent=1), encoding="utf-8")
+    storage.merge_write(CACHE_FILE, grammar_cache)
 
 
 # ===== İstem =====
@@ -127,6 +123,10 @@ def analyze_grammar(video_id, lines):
     """Videonun gramer konuları. Önbellekte varsa oradan; yoksa Gemini'ye sorar. Hata: GrammarError."""
     if video_id in grammar_cache:
         return grammar_cache[video_id]
+    stored = storage.read(CACHE_FILE, {})  # başka bir sunucu kopyası (Vercel) çözümlemiş olabilir
+    if isinstance(stored, dict) and video_id in stored:
+        grammar_cache[video_id] = stored[video_id]
+        return stored[video_id]
     raw, model = generate_json(build_prompt(lines))
     topics = clean_topics(raw, lines)
     if not topics:

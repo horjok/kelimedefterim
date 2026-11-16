@@ -16,7 +16,7 @@ from cefrpy import CEFRAnalyzer
 from lemminflect import getAllLemmas
 from wordfreq import zipf_frequency
 
-from .config import CACHE_DIR
+from . import storage
 from .phrasal_verbs import OBJECT_PRONOUNS, PHRASAL_VERBS, SEPARABLE_PARTICLES
 
 LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
@@ -190,24 +190,21 @@ def find_phrasals(tokens):
 
 # ===== Türkçe çeviri (Google Translate, önbellekli) =====
 
-CACHE_FILE = CACHE_DIR / "translations.json"
+CACHE_FILE = "translations.json"  # storage adı
 TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=tr&dt=t"
 cache_lock = threading.Lock()
 
 
 def load_translations():
-    try:
-        return json.loads(CACHE_FILE.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
+    data = storage.read(CACHE_FILE, {})
+    return data if isinstance(data, dict) else {}
 
 
 translations = load_translations()
 
 
 def save_translations():
-    CACHE_FILE.parent.mkdir(exist_ok=True)
-    CACHE_FILE.write_text(json.dumps(translations, ensure_ascii=False, indent=0), encoding="utf-8")
+    storage.merge_write(CACHE_FILE, translations)
 
 
 def google_translate(texts):

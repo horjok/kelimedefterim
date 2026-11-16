@@ -15,14 +15,12 @@ Modelin yanıtına güvenilmez: her alan doğrulanır, tutmayan soru atılır (g
 Bantlar tahmindir, resmi puan değildir.
 """
 
-import json
 import random
 import re
-import threading
 import time
 import uuid
 
-from .config import IELTS_DIR
+from . import storage
 from .gemini import GeminiError, as_text, generate_json
 
 # Gemini'nin rolü: bütün IELTS isteklerinde sistem talimatı olarak gönderilir
@@ -103,7 +101,6 @@ MAX_ESSAY_CHARS = 6000
 MAX_LISTENING_LINES = 120
 MAX_LISTENING_CHARS = 9000
 BLANK = "_____"
-set_lock = threading.Lock()
 
 READING_TOPICS = {
     "academic": ["urban planning", "marine biology", "the history of a technology", "psychology of memory", "renewable energy",
@@ -133,38 +130,29 @@ def norm(text):
 def save_set(kind, data):
     data["id"] = uuid.uuid4().hex[:12]
     data["created"] = int(time.time())
-    folder = IELTS_DIR / kind
-    with set_lock:
-        folder.mkdir(parents=True, exist_ok=True)
-        (folder / f"{data['id']}.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    storage.write(f"ielts/{kind}/{data['id']}.json", data)
     return data
 
 
 def load_set(kind, set_id):
     if kind not in SET_KINDS or not SET_ID.match(set_id or ""):
         return None
-    try:
-        return json.loads((IELTS_DIR / kind / f"{set_id}.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
+    data = storage.read(f"ielts/{kind}/{set_id}.json")
+    return data if isinstance(data, dict) else None
 
 
 def list_sets(kind):
     """Kayıtlı setlerin özeti, yeniden eskiye."""
     if kind not in SET_KINDS:
         return []
-    folder = IELTS_DIR / kind
     result = []
-    if folder.is_dir():
-        for file in folder.glob("*.json"):
-            try:
-                data = json.loads(file.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                continue
-            result.append({
-                "id": data.get("id", ""), "title": data.get("title", ""), "module": data.get("module", ""), "level": data.get("level", 0),
-                "created": data.get("created", 0), "count": len(data.get("questions", [])),
-            })
+    for data in storage.read_folder(f"ielts/{kind}"):
+        if not isinstance(data, dict):
+            continue
+        result.append({
+            "id": data.get("id", ""), "title": data.get("title", ""), "module": data.get("module", ""), "level": data.get("level", 0),
+            "created": data.get("created", 0), "count": len(data.get("questions", [])),
+        })
     return sorted(result, key=lambda item: -item["created"])[:40]
 
 

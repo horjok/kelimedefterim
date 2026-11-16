@@ -6,8 +6,8 @@ ve bir kelimenin kayıtlı videolarda geçtiği yerleri bulma.
 import html
 import json
 import logging
+import os
 import re
-import threading
 import urllib.request
 from urllib.parse import parse_qs, quote, urlparse
 
@@ -22,16 +22,32 @@ from youtube_transcript_api import (
     VideoUnavailable,
     YouTubeTranscriptApi,
 )
+from youtube_transcript_api.proxies import GenericProxyConfig, WebshareProxyConfig
 
-from .config import TRANSCRIPT_DIR
+from . import storage
+from .config import ON_VERCEL
 from .ipa import WORD, prepare_ipa, token_to_ipa
 
 log = logging.getLogger("kelime-defteri")
 
 ENGLISH = ["en", "en-US", "en-GB", "en-CA", "en-AU"]
-transcript_api = YouTubeTranscriptApi()
+
+
+def proxy_config():
+    """YouTube bulut sunucularının (Vercel gibi) IP'lerini sık engeller. Proxy verilirse istekler onun üzerinden gider:
+    WEBSHARE_PROXY_USERNAME + WEBSHARE_PROXY_PASSWORD (dönen konut IP'leri) ya da YT_PROXY_URL (http://kullanici:sifre@sunucu:port)."""
+    user = os.environ.get("WEBSHARE_PROXY_USERNAME", "")
+    password = os.environ.get("WEBSHARE_PROXY_PASSWORD", "")
+    if user and password:
+        return WebshareProxyConfig(proxy_username=user, proxy_password=password)
+    url = os.environ.get("YT_PROXY_URL", "")
+    if url:
+        return GenericProxyConfig(http_url=url, https_url=url)
+    return None
+
+
+transcript_api = YouTubeTranscriptApi(proxy_config=proxy_config())
 transcript_cache = {}  # video id -> hazır yanıt (açılışta cache/transcripts klasöründen de dolar)
-transcript_lock = threading.Lock()
 
 
 # ===== YouTube linkinden video id =====
@@ -131,6 +147,10 @@ def get_transcript(video_id):
     """Transkripti getirir (önbellekten ya da YouTube'dan). Hata olursa TranscriptError."""
     if video_id in transcript_cache:
         return transcript_cache[video_id]
+    stored = storage.read(f"transcripts/{video_id}.json")  # başka bir sunucu kopyası (Vercel) kaydetmiş olabilir
+    if valid_transcript(stored):
+        transcript_cache[video_id] = stored
+        return stored
 
     try:
         fetched = transcript_api.fetch(video_id, languages=ENGLISH)
@@ -141,6 +161,9 @@ def get_transcript(video_id):
     except (VideoUnavailable, InvalidVideoId):
         raise TranscriptError("Video bulunamadı ya da erişilemiyor.", 404)
     except (RequestBlocked, IpBlocked):
+        if ON_VERCEL and proxy_config() is None:
+            raise TranscriptError("YouTube bu sunucunun (Vercel) isteklerini engelliyor. Transkript için bir proxy ayarla "
+                                  "(WEBSHARE_PROXY_USERNAME/PASSWORD ya da YT_PROXY_URL) ya da uygulamayı yerelde çalıştır.", 503)
         raise TranscriptError("YouTube şu an istekleri engelliyor. Biraz sonra tekrar dene.", 503)
     except CouldNotRetrieveTranscript as exc:
         log.warning("Transkript alınamadı: %s", exc)
@@ -170,25 +193,18 @@ def fetch_title(video_id):
         return ""
 
 
+def valid_transcript(data):
+    return isinstance(data, dict) and bool(VIDEO_ID.match(str(data.get("videoId", "")))) and isinstance(data.get("lines"), list)
+
+
 def save_transcript(data):
-    try:
-        with transcript_lock:
-            TRANSCRIPT_DIR.mkdir(parents=True, exist_ok=True)
-            (TRANSCRIPT_DIR / f"{data['videoId']}.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    except OSError as exc:
-        log.warning("Transkript diske yazılamadı: %s", exc)
+    storage.write(f"transcripts/{data['videoId']}.json", data)
 
 
 def load_transcripts():
-    """Sunucu açılırken daha önce kaydedilmiş transkriptleri belleğe alır."""
-    if not TRANSCRIPT_DIR.is_dir():
-        return
-    for file in TRANSCRIPT_DIR.glob("*.json"):
-        try:
-            data = json.loads(file.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        if isinstance(data, dict) and VIDEO_ID.match(str(data.get("videoId", ""))) and isinstance(data.get("lines"), list):
+    """Sunucu açılırken daha önce kaydedilmiş transkriptleri belleğe alır (storage: disk ya da Redis)."""
+    for data in storage.read_folder("transcripts"):
+        if valid_transcript(data):
             transcript_cache.setdefault(data["videoId"], data)
 
 

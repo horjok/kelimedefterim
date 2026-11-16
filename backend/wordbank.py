@@ -33,6 +33,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from wordfreq import top_n_list, zipf_frequency
 
+from . import storage
 from .config import CACHE_DIR, WEB_DIR
 from .gemini import GeminiError, as_text, generate_json   # Gemini yalnızca hazır kayıtları denetler (review_words)
 from .ipa import word_to_ipa
@@ -40,7 +41,6 @@ from .lessons import TEACHER_PERSONA
 from .phrasal_verbs import PHRASAL_VERBS
 from .vocab import LEVELS, POS_NAMES, analyze_word, cache_lock, google_translate, is_basic, meaning_of, save_translations, translate_all, translation_query, translations
 
-BANK_DIR = CACHE_DIR / "wordbank"
 CANDIDATE_POOL = 25000   # wordfreq'in en sık kaç kelimesine bakılır
 MIN_LENGTH = 3
 MAX_COUNT = 30           # bir istekte en çok döndürülen kelime
@@ -359,17 +359,13 @@ def fill_from_dictionary(level, exclude, pool, frequent=False):
 
 def load_bank(level):
     if level not in bank_cache:
-        try:
-            data = json.loads((BANK_DIR / f"{level}.json").read_text(encoding="utf-8"))
-            bank_cache[level] = data if isinstance(data, dict) else {}
-        except (OSError, ValueError):
-            bank_cache[level] = {}
+        data = storage.read(f"wordbank/{level}.json", {})
+        bank_cache[level] = data if isinstance(data, dict) else {}
     return bank_cache[level]
 
 
 def save_bank(level):
-    BANK_DIR.mkdir(parents=True, exist_ok=True)
-    (BANK_DIR / f"{level}.json").write_text(json.dumps(bank_cache[level], ensure_ascii=False, indent=0), encoding="utf-8")
+    storage.merge_write(f"wordbank/{level}.json", bank_cache[level])
 
 
 def get_words(level, count, exclude=(), topic=""):

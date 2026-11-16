@@ -14,18 +14,16 @@ Modelin yanıtı alan alan doğrulanır. İçerik yapay zekâ üretimidir, hata 
 import hashlib
 import json
 import re
-import threading
 import time
 
-from .config import CACHE_DIR, WEB_DIR
+from . import storage
+from .config import WEB_DIR
 from .gemini import GeminiError, as_text, generate_json
 from .ielts import BLANK, MIN_QUESTIONS, clean_question, norm
 
 CURRICULUM_FILE = WEB_DIR / "data" / "gramer.json"
-LESSON_DIR = CACHE_DIR / "lessons"
 TOPIC_KEY = re.compile(r"^[a-z][a-z0-9-]{1,40}$")
 MAX_USES = 12  # alt başlığı çok olan konularda her alt başlığa en az bir kural düşsün
-lesson_lock = threading.Lock()
 
 TEACHER_PERSONA = """You are an experienced English teacher who teaches grammar to Turkish-speaking learners.
 
@@ -147,15 +145,12 @@ def clean_lesson(raw):
 def get_lesson(key, fresh=False):
     """Konunun ayrıntılı anlatımı. Diskte varsa oradan; yoksa (ya da fresh ise) Gemini'ye yazdırır."""
     topic = find_topic(key)
-    file = LESSON_DIR / f"{key}.json"
+    name = f"lessons/{key}.json"
     signature = topic_hash(topic)
     if not fresh:
-        try:
-            saved = json.loads(file.read_text(encoding="utf-8"))
-            if saved.get("topicHash") == signature:  # müfredat değiştiyse eski anlatım kullanılmaz
-                return saved
-        except (OSError, ValueError):
-            pass
+        saved = storage.read(name)
+        if isinstance(saved, dict) and saved.get("topicHash") == signature:  # müfredat değiştiyse eski anlatım kullanılmaz
+            return saved
     raw, model = generate_json(LESSON_PROMPT.format(
         en=topic["en"], pattern=topic.get("pattern", ""), level_note=LEVEL_NOTES.get(topic.get("level"), LEVEL_NOTES["B1"]),
         subtopics=subtopic_note(topic),
@@ -164,9 +159,7 @@ def get_lesson(key, fresh=False):
     if lesson is None:
         raise GeminiError("Gemini bu konu için kullanılabilir bir anlatım döndürmedi. Yeniden dene.", 502, "no_content")
     data = {"key": key, "model": model, "created": int(time.time()), "topicHash": signature, **lesson}
-    with lesson_lock:
-        LESSON_DIR.mkdir(parents=True, exist_ok=True)
-        file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    storage.write(name, data)
     return data
 
 

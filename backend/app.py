@@ -14,13 +14,14 @@ Kelime Defteri Flask uygulaması.
 - /api/ielts/* : IELTS bölümü (ielts.py): Reading/Listening setleri, Writing konusu ve değerlendirmesi, Speaking soruları.
 """
 
+import hmac
 from pathlib import Path
 from urllib.error import HTTPError
 
-from flask import Flask, abort, jsonify, request, send_from_directory
+from flask import Flask, Response, abort, jsonify, request, send_from_directory
 
 from . import ielts, lessons, wordbank
-from .config import WEB_DIR
+from .config import APP_PASSWORD, APP_PUBLIC, ON_VERCEL, WEB_DIR
 from .gemini import GeminiError
 from .grammar import GrammarError, analyze_grammar
 from .ipa import WORD, prepare_ipa, syllabify, token_to_ipa
@@ -42,6 +43,32 @@ app.json.ensure_ascii = False  # IPA sembolleri JSON'da okunur kalsın
 
 vocab_cache = {}  # video id -> kelime listesi
 load_transcripts()  # daha önce açılmış videoların transkriptleri (kelime araması için)
+
+
+# ===== Giriş şifresi =====
+# İnternete açılınca (Vercel) adresi bulan herkes Gemini kotasını ve çeviri sınırını harcayabilir.
+# APP_PASSWORD verilirse her istek şifre ister (HTTP Basic: kullanıcı adı önemsiz). Tarayıcı şifreyi bir kez sorar,
+# sonra sayfaların fetch istekleri de onu kendiliğinden gönderir.
+
+def password_ok():
+    auth = request.authorization
+    given = (auth.password or "") if auth and auth.type == "basic" else ""
+    return hmac.compare_digest(given.encode("utf-8"), APP_PASSWORD.encode("utf-8"))
+
+
+@app.before_request
+def require_password():
+    if APP_PASSWORD:
+        if not password_ok():
+            return Response("Kelime Defteri: şifre gerekli.", 401, {
+                "WWW-Authenticate": 'Basic realm="Kelime Defteri", charset="UTF-8"',
+                "Content-Type": "text/plain; charset=utf-8",
+            })
+    elif ON_VERCEL and not APP_PUBLIC:
+        # Şifresiz yayın kazara olmasın: Vercel'de ya APP_PASSWORD ya da bilerek APP_PUBLIC=1 verilmeli.
+        return Response("Kelime Defteri: Vercel ayarlarında APP_PASSWORD ortam değişkenini tanımla "
+                        "(ya da herkese açık olsun istiyorsan APP_PUBLIC=1).", 503, {"Content-Type": "text/plain; charset=utf-8"})
+    return None
 
 
 # ===== Statik dosyalar =====

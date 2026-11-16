@@ -9,3 +9,7 @@ cache/
 # Yerel yedekler ve kişisel ayarlar
 _yedek/
 .claude/settings.local.json
+
+# Ortam değişkenleri (vercel env pull gizli anahtarları buraya yazar)
+.env
+.env.*

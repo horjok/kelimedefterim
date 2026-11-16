@@ -1,0 +1,9 @@
+# Vercel'e yüklenmeyecekler (vercel CLI ile yerelden deploy edilirken de)
+gemini_key.txt
+cache/
+_yedek/
+__pycache__/
+*.pyc
+.claude/
+.env
+.env.*
