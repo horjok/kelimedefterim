@@ -25,7 +25,7 @@ let gramerQuiz = null;
 
 function gramerProgress() {
     try {
-        let value = JSON.parse(localStorage.getItem("gramer:progress"));
+        let value = JSON.parse(localStorage.getItem(langKey("gramer:progress")));
         return value && typeof value === "object" ? value : {};
     } catch (error) {
         return {};
@@ -36,7 +36,7 @@ function gramerSaveProgress(key, change) {
     let progress = gramerProgress();
     progress[key] = { ...(progress[key] || {}), ...change, at: Date.now() };
     try {
-        localStorage.setItem("gramer:progress", JSON.stringify(progress));
+        localStorage.setItem(langKey("gramer:progress"), JSON.stringify(progress));
     } catch (error) {
         // depolama kapalıysa ilerleme tutulmaz
     }

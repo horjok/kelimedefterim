@@ -35,7 +35,7 @@ function dictElement(tag, className, text) {
 
 function dictHistory() {
     try {
-        let list = JSON.parse(localStorage.getItem(DICT_HISTORY_KEY));
+        let list = JSON.parse(localStorage.getItem(langKey(DICT_HISTORY_KEY)));
         return Array.isArray(list) ? list.filter((item) => typeof item === "string") : [];
     } catch (error) {
         return [];
@@ -45,7 +45,7 @@ function dictHistory() {
 function dictRemember(word) {
     let list = [word, ...dictHistory().filter((item) => item !== word)].slice(0, DICT_HISTORY_MAX);
     try {
-        localStorage.setItem(DICT_HISTORY_KEY, JSON.stringify(list));
+        localStorage.setItem(langKey(DICT_HISTORY_KEY), JSON.stringify(list));
     } catch (error) {
         // depolama kapalıysa geçmiş tutulmaz
     }
@@ -141,7 +141,7 @@ function dictSearch(rawWord) {
 function dictTranslate(word, request) {
     let trInput = document.getElementById("dictTr");
     trInput.placeholder = "Çeviri getiriliyor…";
-    fetch(`/api/translate?text=${encodeURIComponent(word)}`)
+    fetch(apiUrl(`/api/translate?text=${encodeURIComponent(word)}`))
         .then(function (response) { return response.json(); })
         .then(function (data) {
             if (request !== dictRequest) {
@@ -268,7 +268,7 @@ function dictFindVideos(word, request) {
     status.className = "transcript-hint";
     status.textContent = "Aranıyor…";
 
-    fetch(`/api/occurrences?word=${query}`)
+    fetch(apiUrl(`/api/occurrences?word=${query}`))
         .then(function (response) {
             return response.json().then(function (data) {
                 if (!response.ok) {
@@ -421,7 +421,7 @@ function wbLoad(word, request) {
     if (word.includes(" ")) {
         return;  // yalnızca tek kelime hecelenir
     }
-    fetch(`/api/syllables?word=${encodeURIComponent(word)}`)
+    fetch(apiUrl(`/api/syllables?word=${encodeURIComponent(word)}`))
         .then(function (response) { return response.ok ? response.json() : null; })
         .then(function (data) {
             if (request !== dictRequest || !data || data.syllables.length < 2) {
@@ -494,7 +494,7 @@ function wbSpeak(rate) {
     }
     speechSynthesis.cancel();
     let speech = new SpeechSynthesisUtterance(dictCurrent.word);
-    speech.lang = "en-US";
+    speech.lang = langTts();
     speech.rate = rate;
     speechSynthesis.speak(speech);
 }

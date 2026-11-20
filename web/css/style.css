@@ -1126,3 +1126,8 @@ textarea.ielts-essay { min-height: 280px; font-size: 16px; line-height: 1.6; }
 .pk-topic { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; font-weight: 700; }
 .pk-topic[hidden] { display: none; }
 .pk-topic select { min-height: 44px; max-width: 100%; flex: 1 1 220px; }
+
+/* Dil seçimi (lang.js; yalnızca birden çok dil varken görünür) */
+.lang-picker { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; font-weight: 700; color: var(--ink-soft); }
+.lang-picker select { min-height: 44px; flex: 1 1 auto; border-radius: 12px; border: 2px solid var(--rule); background: var(--paper); color: var(--ink); font: inherit; padding: 0 10px; }
+@media (max-width: 959px) { .lang-picker { margin: 0 0 0 auto; } .lang-picker span { display: none; } .lang-picker select { min-height: 40px; } }

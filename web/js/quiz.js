@@ -26,7 +26,7 @@ function ieltsNorm(text) {
 // Sunucuya JSON isteği. Hata olursa Türkçe mesajlı Error (error.code: no_key, quota, ...)
 function ieltsApi(path, body) {
     let options = body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
-    return fetch(path, options).then(function (response) {
+    return fetch(apiUrl(path), options).then(function (response) {
         return response.json().then(function (data) {
             if (!response.ok) {
                 let error = new Error(data.error || `Sunucu hatası (kod ${response.status}).`);

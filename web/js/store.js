@@ -23,7 +23,7 @@ const SAVED_LEARNED_BOX = 4;  // bu kutu ve üstü "öğrenildi" sayılır
 function savedAll() {
     let list;
     try {
-        list = JSON.parse(localStorage.getItem(SAVED_KEY));
+        list = JSON.parse(localStorage.getItem(langKey(SAVED_KEY)));
     } catch (error) {
         return [];
     }
@@ -47,7 +47,7 @@ function savedAll() {
 // Yazılamazsa (gizli pencere, dolu depolama) false döner
 function savedWriteAll(list) {
     try {
-        localStorage.setItem(SAVED_KEY, JSON.stringify(list));
+        localStorage.setItem(langKey(SAVED_KEY), JSON.stringify(list));
         return true;
     } catch (error) {
         console.warn("Kelimeler kaydedilemedi:", error);

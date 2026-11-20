@@ -35,7 +35,7 @@ let pkBusy = false;    // istek sürerken ya da cevap gösterilirken tıklamalar
 
 function pkRead(key, fallback) {
     try {
-        let value = JSON.parse(localStorage.getItem(key));
+        let value = JSON.parse(localStorage.getItem(langKey(key)));
         return value === null || typeof value !== typeof fallback ? fallback : value;
     } catch (error) {
         return fallback;
@@ -44,7 +44,7 @@ function pkRead(key, fallback) {
 
 function pkWrite(key, value) {
     try {
-        localStorage.setItem(key, JSON.stringify(value));
+        localStorage.setItem(langKey(key), JSON.stringify(value));
     } catch (error) {
         // depolama kapalıysa tercih ve bilinen kelimeler tutulmaz
     }
@@ -79,7 +79,7 @@ function pkSpeak(text, rate) {
     }
     speechSynthesis.cancel();
     let speech = new SpeechSynthesisUtterance(text);
-    speech.lang = "en-US";
+    speech.lang = langTts();
     speech.rate = rate || 0.9;
     speechSynthesis.speak(speech);
     return true;
@@ -770,7 +770,7 @@ fetch("data/kelime-konulari.json")
     .catch(function () { pkTopics = []; });
 
 // İçe aktarılmış kelime listesi varsa konu seçimine eklenir (backend/import_wordlist.py)
-fetch("/api/wordbank/sources")
+fetch(apiUrl("/api/wordbank/sources"))
     .then((response) => response.json())
     .then(function (data) {
         pkList = data && typeof data === "object" ? data : {};

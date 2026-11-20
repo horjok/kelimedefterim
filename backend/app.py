@@ -12,15 +12,16 @@ Kelime Defteri Flask uygulaması.
 - /api/lesson?topic=<konu> ve /api/lesson/quiz : Gramer bölümü (lessons.py): konu anlatımı ve alıştırma.
 - /api/wordbank : Pekiştir sayfası için seviyeli kelime haznesi (wordbank.py).
 - /api/ielts/* : IELTS bölümü (ielts.py): Reading/Listening setleri, Writing konusu ve değerlendirmesi, Speaking soruları.
+- /api/languages : öğrenilebilen diller (languages.py). Bütün /api/* istekleri ?lang= alır (yoksa İngilizce).
 """
 
 import hmac
 from pathlib import Path
 from urllib.error import HTTPError
 
-from flask import Flask, Response, abort, jsonify, request, send_from_directory
+from flask import Flask, Response, abort, g, jsonify, request, send_from_directory
 
-from . import ielts, lessons, wordbank
+from . import ielts, languages, lessons, wordbank
 from .config import APP_PASSWORD, APP_PUBLIC, ON_VERCEL, WEB_DIR
 from .gemini import GeminiError
 from .grammar import GrammarError, analyze_grammar
@@ -90,6 +91,24 @@ def static_file(filename):
 
 def error(message, status):
     return jsonify({"error": message}), status
+
+
+@app.before_request
+def choose_language():
+    """Her API isteği çalışılan dili ?lang= ile taşır (web/js/lang.js apiUrl ekler). Verilmezse İngilizce.
+    Seçilen dil g.lang içinde durur; dile özgü kodlar oradan okur."""
+    if not request.path.startswith("/api/"):
+        return None
+    code = languages.resolve(request.args.get("lang"))
+    if code is None:
+        return error("Bu dil henüz desteklenmiyor.", 400)
+    g.lang = code
+    return None
+
+
+@app.get("/api/languages")
+def language_list():
+    return jsonify({"default": languages.DEFAULT, "languages": languages.public_list()})
 
 
 @app.get("/api/transcript")

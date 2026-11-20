@@ -30,7 +30,7 @@ function setStatus(message, className) {
 
 function saveLastUrl(url) {
     try {
-        localStorage.setItem("lastVideoUrl", url);
+        localStorage.setItem(langKey("lastVideoUrl"), url);
     } catch (error) {
         // Gizli pencerede localStorage kapalı olabilir; önemli değil
     }
@@ -38,7 +38,7 @@ function saveLastUrl(url) {
 
 function loadLastUrl() {
     try {
-        return localStorage.getItem("lastVideoUrl") || "";
+        return localStorage.getItem(langKey("lastVideoUrl")) || "";
     } catch (error) {
         return "";
     }
@@ -244,7 +244,7 @@ async function fetchTranslation(text) {
     if (translationCache.has(text)) {
         return translationCache.get(text);
     }
-    let response = await fetch(`/api/translate?text=${encodeURIComponent(text)}`);
+    let response = await fetch(apiUrl(`/api/translate?text=${encodeURIComponent(text)}`));
     let data = await response.json();
     if (!response.ok) {
         throw new Error(data.error || `Sunucu hatası (kod ${response.status}).`);
@@ -1034,7 +1034,7 @@ function loadVocab(url) {
     let request = ++vocabRequest;
     resetVocab("Kelimeler seviyelere ayrılıyor ve Türkçeye çevriliyor...");
 
-    fetch(`/api/vocab?url=${encodeURIComponent(url)}`)
+    fetch(apiUrl(`/api/vocab?url=${encodeURIComponent(url)}`))
         .then(function (response) {
             return response.json().then(function (data) {
                 if (!response.ok) {
@@ -1108,7 +1108,7 @@ function loadTranscript(url) {
     }
     setStatus("Transkript getiriliyor...", "");
 
-    fetch(`/api/transcript?url=${encodeURIComponent(url)}`)
+    fetch(apiUrl(`/api/transcript?url=${encodeURIComponent(url)}`))
         .then(function (response) {
             return response.json().then(function (data) {
                 if (!response.ok) {

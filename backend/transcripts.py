@@ -24,13 +24,13 @@ from youtube_transcript_api import (
 )
 from youtube_transcript_api.proxies import GenericProxyConfig, WebshareProxyConfig
 
-from . import storage
+from . import languages, storage
 from .config import ON_VERCEL
 from .ipa import WORD, prepare_ipa, token_to_ipa
 
 log = logging.getLogger("kelime-defteri")
 
-ENGLISH = ["en", "en-US", "en-GB", "en-CA", "en-AU"]
+ENGLISH = languages.info("en")["transcript"]  # İspanyolca vb. eklenince dile göre seçilecek
 
 
 def proxy_config():

@@ -105,7 +105,7 @@ function buildupSpeak() {
         return;
     }
     let speech = new SpeechSynthesisUtterance(buildupText());
-    speech.lang = "en-US";
+    speech.lang = langTts();
     speech.rate = 0.9;
     speechSynthesis.speak(speech);
 }

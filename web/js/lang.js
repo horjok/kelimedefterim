@@ -1,0 +1,78 @@
+// Dil katmanı: kullanıcının hangi dili çalıştığı (şimdilik yalnızca İngilizce, sonra İspanyolca...).
+// helpers.js'ten hemen sonra, öbür bütün script'lerden önce yüklenir.
+//
+// - currentLang(): seçili dilin kodu ("en"). localStorage "lang" içinde saklanır.
+// - langKey(anahtar): öğrenme verisini dile göre ayırır. İngilizce eski anahtarları kullanır ("savedWords"),
+//   diğer diller önek alır ("es:savedWords"). Böylece mevcut veriye dokunulmaz, desteler birbirine karışmaz.
+// - apiUrl(yol): sunucu isteğine ?lang= ekler (sunucu tarafı: backend/languages.py).
+// - langTts(): tarayıcının sesli okuma dili ("en-US").
+// Yeni dil eklerken buradaki LANG_INFO ile backend/languages.py içindeki LANGUAGES aynı kodu taşımalı.
+
+const LANG_DEFAULT = "en";
+const LANG_INFO = {
+    en: { name: "İngilizce", native: "English", tts: "en-US" },
+};
+
+function currentLang() {
+    try {
+        let code = localStorage.getItem("lang");
+        return code && LANG_INFO[code] ? code : LANG_DEFAULT;
+    } catch (error) {
+        return LANG_DEFAULT;
+    }
+}
+
+function setLang(code) {
+    if (!LANG_INFO[code] || code === currentLang()) {
+        return;
+    }
+    try {
+        localStorage.setItem("lang", code);
+    } catch (error) {
+        return; // depolama kapalıysa dil değiştirilemez
+    }
+    location.reload(); // her sayfa verisini seçili dile göre baştan yükler
+}
+
+function langKey(key) {
+    let code = currentLang();
+    return code === LANG_DEFAULT ? key : `${code}:${key}`;
+}
+
+function apiUrl(path) {
+    return path + (path.includes("?") ? "&" : "?") + "lang=" + encodeURIComponent(currentLang());
+}
+
+function langTts() {
+    return LANG_INFO[currentLang()].tts;
+}
+
+// Birden çok dil varsa kenar çubuğuna dil seçimi eklenir (tek dilde görünmez).
+function langRenderPicker() {
+    let codes = Object.keys(LANG_INFO);
+    let brand = document.querySelector(".sidebar .brand");
+    if (codes.length < 2 || !brand) {
+        return;
+    }
+    let label = document.createElement("label");
+    label.className = "lang-picker";
+    let caption = document.createElement("span");
+    caption.textContent = "Dil";
+    let select = document.createElement("select");
+    select.id = "langSelect";
+    codes.forEach(function (code) {
+        let option = document.createElement("option");
+        option.value = code;
+        option.textContent = LANG_INFO[code].name;
+        option.selected = code === currentLang();
+        select.appendChild(option);
+    });
+    select.addEventListener("change", function () {
+        setLang(select.value);
+    });
+    label.append(caption, select);
+    brand.after(label);
+}
+
+document.documentElement.dataset.studyLang = currentLang();
+langRenderPicker();
