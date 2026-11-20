@@ -19,4 +19,5 @@ _yedek/
 
 # Ajan ve belge dosyaları yalnızca yerelde (kullanıcı isteği, 20 Kasım 2026)
 *.md
+!README.md
 .claude/
