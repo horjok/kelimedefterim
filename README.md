@@ -131,7 +131,7 @@ seri, ilerleme, notlar                          storage.py: önbellek
 - **Kullanıcı verisi** yalnızca tarayıcıda (localStorage) durur. Sunucuda hesap ya da kullanıcı verisi yoktur.
 - **Önbellek:** çeviriler, transkriptler, gramer analizleri, konu anlatımları ve kelime haznesi bir kez üretilip saklanır. Aynı istek ikinci kez dış servise gitmez. Rate limit'e karşı asıl önlem budur.
 - **Model çıktısına güvenilmez:** Gemini yanıtları JSON olarak istenir ve alan alan denetlenir. Satır numarası tutmayan örnek, cevabı seçeneklerde olmayan soru ya da kaynakta geçmeyen alıntı atılır.
-- **Çoklu dil altyapısı:** API `?lang=` alır, localStorage anahtarları dile göre ayrılır. Şimdilik yalnızca İngilizce var; İspanyolca için hazırlık sürüyor.
+- **Çoklu dil:** API `?lang=` alır, localStorage anahtarları dile göre ayrılır (destesi, defteri ayrı). Kenar çubuğundaki **Dil** seçimiyle İspanyolcaya geçilir: video, dikte, kelimeler, kartlar ve sözlük çalışır. Telaffuz İspanya aksanına göre kurallarla üretilir (cielo /ˈθjelo/), yalın hâl simplemma ile bulunur, seviye sıklıktan tahmin edilir. Dikte vurgu işaretsiz cevabı da kabul eder (estacion = estación). Gramer ve Pekiştir İspanyolca için henüz yok; IELTS yalnızca İngilizcede.
 
 ## Kurulum
 
@@ -173,7 +173,8 @@ Yerelde açtığın videonun transkripti Redis'e yazılır, Vercel'deki site de 
 ├── backend/               Flask sunucusu
 │   ├── app.py             Uygulama ve /api/* uç noktaları; web/ klasörünü sunar
 │   ├── config.py          Yollar ve ayarlar, .env.local okuma
-│   ├── languages.py       Öğrenilen diller kaydı
+│   ├── languages.py       Öğrenilen diller kaydı (İngilizce, İspanyolca)
+│   ├── spanish.py         İspanyolca paketi: IPA (İspanya aksanı), heceleme, yalın hâl, seviye, kelime listesi
 │   ├── storage.py         Önbellek deposu (cache/ ya da Upstash Redis)
 │   ├── transcripts.py     YouTube transkripti, cümlelere bölme, videolarda kelime arama
 │   ├── ipa.py             IPA telaffuz ve heceleme

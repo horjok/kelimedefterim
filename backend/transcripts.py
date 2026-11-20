@@ -1,6 +1,10 @@
 """
 YouTube transkriptleri: video id çözme, altyazıyı cümlelere bölme, diskte saklama
 ve bir kelimenin kayıtlı videolarda geçtiği yerleri bulma.
+
+Her şey çalışılan dile göre ayrılır (lang: "en", "es"...). Aynı video iki dilde ayrı transkript olarak saklanır:
+İngilizce eski yerinde (transcripts/<id>.json), diğer diller kendi klasöründe (es/transcripts/<id>.json).
+Dile özgü parçalar (kelime deseni, IPA, çekimler) pack(lang) ile seçilir.
 """
 
 import html
@@ -8,6 +12,7 @@ import json
 import logging
 import os
 import re
+import threading
 import urllib.request
 from urllib.parse import parse_qs, quote, urlparse
 
@@ -24,13 +29,19 @@ from youtube_transcript_api import (
 )
 from youtube_transcript_api.proxies import GenericProxyConfig, WebshareProxyConfig
 
-from . import languages, storage
+from . import ipa, languages, spanish, storage
 from .config import ON_VERCEL
-from .ipa import WORD, prepare_ipa, token_to_ipa
+from .ipa import WORD
 
 log = logging.getLogger("kelime-defteri")
 
-ENGLISH = languages.info("en")["transcript"]  # İspanyolca vb. eklenince dile göre seçilecek
+
+
+def pack(lang):
+    """Dile özgü telaffuz ve kelime araçları: WORD deseni, prepare_ipa, token_to_ipa, word_to_ipa, syllables."""
+    if lang == "es":
+        return spanish
+    return ipa
 
 
 def proxy_config():
@@ -47,7 +58,23 @@ def proxy_config():
 
 
 transcript_api = YouTubeTranscriptApi(proxy_config=proxy_config())
-transcript_cache = {}  # video id -> hazır yanıt (açılışta cache/transcripts klasöründen de dolar)
+transcript_cache = {}  # İngilizce: video id -> hazır yanıt (açılışta cache/transcripts klasöründen de dolar)
+caches = {"en": transcript_cache}  # dil -> {video id -> yanıt}; diğer diller ilk istendiğinde depodan yüklenir
+caches_lock = threading.Lock()
+
+
+def folder(lang):
+    return languages.storage_name(lang, "transcripts")
+
+
+def cache_for(lang):
+    with caches_lock:
+        if lang not in caches:
+            caches[lang] = {}
+            for data in storage.read_folder(folder(lang)):
+                if valid_transcript(data):
+                    caches[lang].setdefault(data["videoId"], data)
+        return caches[lang]
 
 
 # ===== YouTube linkinden video id =====
@@ -91,7 +118,7 @@ def clean(text):
     return re.sub(r"\s+", " ", text).strip()
 
 
-def build_lines(snippets):
+def build_lines(snippets, lang="en"):
     pieces = [(s.start, s.duration, clean(s.text)) for s in snippets]
     pieces = [p for p in pieces if p[2]]
     if not pieces:
@@ -120,11 +147,12 @@ def build_lines(snippets):
     if current:
         lines.append(current)
 
-    prepare_ipa([t for line in lines for t in line["tokens"]])
+    speech = pack(lang)
+    speech.prepare_ipa([t for line in lines for t in line["tokens"]])
 
     result = []
     for line in lines:
-        words = [{"text": t, "ipa": token_to_ipa(t)} for t in line["tokens"]]
+        words = [{"text": t, "ipa": speech.token_to_ipa(t)} for t in line["tokens"]]
         result.append({
             "start": round(line["start"], 2),
             "end": round(line["end"], 2),
@@ -143,21 +171,22 @@ class TranscriptError(Exception):
         self.status = status
 
 
-def get_transcript(video_id):
+def get_transcript(video_id, lang="en"):
     """Transkripti getirir (önbellekten ya da YouTube'dan). Hata olursa TranscriptError."""
-    if video_id in transcript_cache:
-        return transcript_cache[video_id]
-    stored = storage.read(f"transcripts/{video_id}.json")  # başka bir sunucu kopyası (Vercel) kaydetmiş olabilir
+    cache = cache_for(lang)
+    if video_id in cache:
+        return cache[video_id]
+    stored = storage.read(f"{folder(lang)}/{video_id}.json")  # başka bir sunucu kopyası (Vercel) kaydetmiş olabilir
     if valid_transcript(stored):
-        transcript_cache[video_id] = stored
+        cache[video_id] = stored
         return stored
 
     try:
-        fetched = transcript_api.fetch(video_id, languages=ENGLISH)
+        fetched = transcript_api.fetch(video_id, languages=languages.info(lang)["transcript"])
     except TranscriptsDisabled:
         raise TranscriptError("Bu videoda altyazı/transkript kapalı.", 404)
     except NoTranscriptFound:
-        raise TranscriptError("Bu videonun İngilizce transkripti yok.", 404)
+        raise TranscriptError(f"Bu videonun {languages.info(lang)['name']} transkripti yok.", 404)
     except (VideoUnavailable, InvalidVideoId):
         raise TranscriptError("Video bulunamadı ya da erişilemiyor.", 404)
     except (RequestBlocked, IpBlocked):
@@ -174,10 +203,10 @@ def get_transcript(video_id):
         "title": fetch_title(video_id),
         "language": fetched.language,
         "generated": fetched.is_generated,
-        "lines": build_lines(fetched.snippets),
+        "lines": build_lines(fetched.snippets, lang),
     }
-    transcript_cache[video_id] = data
-    save_transcript(data)
+    cache[video_id] = data
+    save_transcript(data, lang)
     return data
 
 
@@ -197,13 +226,14 @@ def valid_transcript(data):
     return isinstance(data, dict) and bool(VIDEO_ID.match(str(data.get("videoId", "")))) and isinstance(data.get("lines"), list)
 
 
-def save_transcript(data):
-    storage.write(f"transcripts/{data['videoId']}.json", data)
+def save_transcript(data, lang="en"):
+    storage.write(f"{folder(lang)}/{data['videoId']}.json", data)
 
 
 def load_transcripts():
-    """Sunucu açılırken daha önce kaydedilmiş transkriptleri belleğe alır (storage: disk ya da Redis)."""
-    for data in storage.read_folder("transcripts"):
+    """Sunucu açılırken daha önce kaydedilmiş İngilizce transkriptleri belleğe alır (storage: disk ya da Redis).
+    Diğer diller ilk istendiklerinde yüklenir (cache_for)."""
+    for data in storage.read_folder(folder("en")):
         if valid_transcript(data):
             transcript_cache.setdefault(data["videoId"], data)
 
@@ -225,21 +255,26 @@ MAX_HITS_PER_VIDEO = 6
 MAX_VIDEOS = 30
 
 
-def find_occurrences(query):
+def find_occurrences(query, lang="en"):
     """Kayıtlı transkriptlerde kelimeyi (ya da "pick up" gibi ifadeyi) arar.
     İlk kelimenin çekimleri de sayılır (picked up). Araya kelime giren kullanımlar (pick it up) bulunmaz."""
-    parts = [p.lower() for p in WORD.findall(query.replace("’", "'"))]
+    pattern = pack(lang).WORD
+    parts = [p.lower() for p in pattern.findall(query.replace("’", "'"))]
     if not parts:
         return None
-    first_forms = word_forms(parts[0])
+    cache = cache_for(lang)
+    if lang == "es":
+        first_forms = spanish.word_forms(parts[0], (line["text"] for data in list(cache.values()) for line in data["lines"]))
+    else:
+        first_forms = word_forms(parts[0])
     rest = parts[1:]
     videos = []
     total = 0
-    for data in list(transcript_cache.values()):
+    for data in list(cache.values()):
         hits = []
         count = 0
         for index, line in enumerate(data["lines"]):
-            tokens = [(m.group().lower(), m.start(), m.end()) for m in WORD.finditer(line["text"].replace("’", "'"))]
+            tokens = [(m.group().lower(), m.start(), m.end()) for m in pattern.finditer(line["text"].replace("’", "'"))]
             for i, (token, begin, _) in enumerate(tokens):
                 if token not in first_forms:
                     continue
@@ -257,6 +292,6 @@ def find_occurrences(query):
         "word": " ".join(parts),
         "forms": sorted(first_forms),
         "total": total,
-        "searched": len(transcript_cache),
+        "searched": len(cache),
         "videos": videos[:MAX_VIDEOS],
     }

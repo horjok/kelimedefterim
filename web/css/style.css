@@ -1131,3 +1131,7 @@ textarea.ielts-essay { min-height: 280px; font-size: 16px; line-height: 1.6; }
 .lang-picker { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; font-weight: 700; color: var(--ink-soft); }
 .lang-picker select { min-height: 44px; flex: 1 1 auto; border-radius: 12px; border: 2px solid var(--rule); background: var(--paper); color: var(--ink); font: inherit; padding: 0 10px; }
 @media (max-width: 959px) { .lang-picker { margin: 0 0 0 auto; } .lang-picker span { display: none; } .lang-picker select { min-height: 40px; } }
+
+/* Seçili dilde olmayan bölümlerin menü bağlantıları (lang.js langGatePage): .nav a kuralının display'ini ezer */
+.nav a[hidden] { display: none; }
+.lang-missing button { margin-top: 12px; }

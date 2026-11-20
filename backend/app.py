@@ -13,6 +13,8 @@ Kelime Defteri Flask uygulaması.
 - /api/wordbank : Pekiştir sayfası için seviyeli kelime haznesi (wordbank.py).
 - /api/ielts/* : IELTS bölümü (ielts.py): Reading/Listening setleri, Writing konusu ve değerlendirmesi, Speaking soruları.
 - /api/languages : öğrenilebilen diller (languages.py). Bütün /api/* istekleri ?lang= alır (yoksa İngilizce).
+  Transkript, kelime listesi, çeviri, heceleme ve kelime araması dile göre çalışır; gramer, Pekiştir ve IELTS
+  yalnızca dil kaydında o özellik varsa açılır (FEATURE_PATHS).
 """
 
 import hmac
@@ -21,11 +23,11 @@ from urllib.error import HTTPError
 
 from flask import Flask, Response, abort, g, jsonify, request, send_from_directory
 
-from . import ielts, languages, lessons, wordbank
+from . import ielts, languages, lessons, spanish, wordbank
 from .config import APP_PASSWORD, APP_PUBLIC, ON_VERCEL, WEB_DIR
 from .gemini import GeminiError
 from .grammar import GrammarError, analyze_grammar
-from .ipa import WORD, prepare_ipa, syllabify, token_to_ipa
+from .ipa import prepare_ipa, token_to_ipa
 from .transcripts import (
     TranscriptError,
     clean,
@@ -33,16 +35,17 @@ from .transcripts import (
     find_occurrences,
     get_transcript,
     load_transcripts,
+    pack,
     transcript_cache,
 )
-from .vocab import build_vocab, translate_sentence
+from .vocab import build_vocab, translate_all, translate_sentence, translations_for
 
 STATIC_TYPES = {".html", ".css", ".js", ".json", ".png", ".jpg", ".svg", ".ico", ".webp"}  # .json: yalnızca web/data/ (önbellekler web/ dışında)
 
 app = Flask(__name__, static_folder=None)
 app.json.ensure_ascii = False  # IPA sembolleri JSON'da okunur kalsın
 
-vocab_cache = {}  # video id -> kelime listesi
+vocab_cache = {}  # (dil, video id) -> kelime listesi
 load_transcripts()  # daha önce açılmış videoların transkriptleri (kelime araması için)
 
 
@@ -93,6 +96,10 @@ def error(message, status):
     return jsonify({"error": message}), status
 
 
+# Bu yollar dil kaydında ilgili özellik yoksa kapalıdır (ör. İspanyolcada IELTS yok)
+FEATURE_PATHS = (("/api/grammar", "grammar"), ("/api/lesson", "grammar"), ("/api/wordbank", "wordbank"), ("/api/ielts", "ielts"))
+
+
 @app.before_request
 def choose_language():
     """Her API isteği çalışılan dili ?lang= ile taşır (web/js/lang.js apiUrl ekler). Verilmezse İngilizce.
@@ -103,6 +110,9 @@ def choose_language():
     if code is None:
         return error("Bu dil henüz desteklenmiyor.", 400)
     g.lang = code
+    for prefix, feature in FEATURE_PATHS:
+        if request.path.startswith(prefix) and feature not in languages.info(code)["features"]:
+            return jsonify({"error": f"Bu bölüm {languages.info(code)['name']} için henüz hazır değil.", "code": "no_feature"}), 404
     return None
 
 
@@ -117,7 +127,7 @@ def transcript():
     if not video_id:
         return error("Bu geçerli bir YouTube linki değil.", 400)
     try:
-        return jsonify(get_transcript(video_id))
+        return jsonify(get_transcript(video_id, g.lang))
     except TranscriptError as exc:
         return error(exc.message, exc.status)
 
@@ -128,16 +138,20 @@ def vocabulary():
     video_id = extract_video_id(request.args.get("url", ""))
     if not video_id:
         return error("Bu geçerli bir YouTube linki değil.", 400)
-    if video_id in vocab_cache:
-        return jsonify(vocab_cache[video_id])
+    key = (g.lang, video_id)
+    if key in vocab_cache:
+        return jsonify(vocab_cache[key])
     try:
-        lines = get_transcript(video_id)["lines"]
+        lines = get_transcript(video_id, g.lang)["lines"]
     except TranscriptError as exc:
         return error(exc.message, exc.status)
 
-    data = build_vocab(lines, token_to_ipa, prepare_ipa)
+    if g.lang == "es":
+        data = spanish.build_vocab(lines, lambda texts: translate_all(texts, "es"), translations_for("es"))
+    else:
+        data = build_vocab(lines, token_to_ipa, prepare_ipa)
     if data["translationError"] is None:  # eksik çeviriyle önbelleğe alma, sonra tekrar denensin
-        vocab_cache[video_id] = data
+        vocab_cache[key] = data
     return jsonify(data)
 
 
@@ -162,9 +176,10 @@ def grammar():
 def syllable_list():
     """Kelimenin heceleri: {"word", "syllables": [{"ipa", "stress": 0|1|2}]}. stress: 1 ana vurgu, 2 ikincil."""
     word = clean(request.args.get("word", "")).lower().replace("’", "'")[:40]
-    if not WORD.fullmatch(word):
-        return error("Tek bir İngilizce kelime yaz.", 400)
-    parts = syllabify(word)
+    speech = pack(g.lang)
+    if not speech.WORD.fullmatch(word):
+        return error(f"Tek bir {languages.info(g.lang)['name']} kelime yaz.", 400)
+    parts = speech.syllabify(word)
     if not parts:
         return error("Bu kelimenin okunuşu sözlükte yok.", 404)
     return jsonify({"word": word, "syllables": parts})
@@ -174,7 +189,7 @@ def syllable_list():
 def occurrences():
     """Kelimenin daha önce açılmış videolarda geçtiği cümleler:
     {"word", "forms", "total", "searched", "videos": [{"videoId", "title", "count", "hits": [{"line", "start", "text", "span"}]}]}."""
-    result = find_occurrences(clean(request.args.get("word", ""))[:80])
+    result = find_occurrences(clean(request.args.get("word", ""))[:80], g.lang)
     if result is None:
         return error("Aranacak kelime yok.", 400)
     return jsonify(result)
@@ -187,7 +202,7 @@ def translate():
     if not text:
         return error("Çevrilecek metin yok.", 400)
     try:
-        return jsonify({"tr": translate_sentence(text)})
+        return jsonify({"tr": translate_sentence(text, g.lang)})
     except HTTPError as exc:
         if exc.code == 429:  # Google kısa sürede çok istek geldiğini söylüyor
             return error("Çeviri servisi şu an istekleri sınırlıyor. Birkaç dakika sonra yeniden dene.", 503)

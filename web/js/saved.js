@@ -147,7 +147,7 @@ function exampleHtml(entry) {
     let box = savedElement("p", "study-example");
     let text = entry.example;
     let escaped = entry.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    let match = entry.kind === "word" ? new RegExp(`\\b${escaped}[a-z]*`, "i").exec(text) : null;
+    let match = entry.kind === "word" ? new RegExp(`(?<!\\p{L})${escaped}\\p{L}*`, "iu").exec(text) : null;
     if (match) {
         box.append(`“${text.slice(0, match.index)}`, savedElement("mark", "", match[0]), `${text.slice(match.index + match[0].length)}”`);
     } else {
@@ -735,7 +735,7 @@ function renderTodayIelts() {
     } catch (error) {
         profile = null;
     }
-    if (!box || !profile || !profile.date || typeof profile.target !== "number") {
+    if (!box || !profile || !profile.date || typeof profile.target !== "number" || !langHas("ielts")) {
         return;
     }
     let today = new Date();

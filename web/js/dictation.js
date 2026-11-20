@@ -57,8 +57,11 @@ function dictationNormalize(value) {
     return String(value || "").replace(/[’]/g, "'").toLowerCase().replace(/^[^\p{L}\p{N}']+|[^\p{L}\p{N}']+$/gu, "");
 }
 
+// Cevap karşılaştırması. İngilizce dışındaki dillerde vurgu işaretleri yok sayılır: Türkçe klavyede á, ñ yok,
+// "estacion" yazan "estación" bilmiş sayılır (doğru yazım cevapta yine görünür).
 function dictationAnswerNormalize(value) {
-    return dictationNormalize(value).replace(/[^\p{L}\p{N}']/gu, "");
+    let text = dictationNormalize(value).replace(/[^\p{L}\p{N}']/gu, "");
+    return currentLang() === LANG_DEFAULT ? text : text.normalize("NFD").replace(/\p{M}/gu, "");
 }
 
 function dictationStorageKey(suffix) {

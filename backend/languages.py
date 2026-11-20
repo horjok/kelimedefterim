@@ -22,6 +22,16 @@ LANGUAGES = {
         "translate": "en",                       # Google çevirisinde kaynak dil
         "features": ["ipa", "phrasal", "ielts", "grammar", "wordbank"],
     },
+    # İspanyolca (20 Kasım 2026, adım 2: çekirdek). Telaffuz İspanya aksanı (θ, ʝ), dil paketi backend/spanish.py.
+    # Gramer müfredatı, Pekiştir haznesi ve Gemini istemleri adım 3'te; IELTS yalnızca İngilizcede.
+    "es": {
+        "name": "İspanyolca",
+        "native": "Español",
+        "transcript": ["es", "es-ES", "es-419", "es-MX", "es-US"],
+        "tts": "es-ES",
+        "translate": "es",
+        "features": ["ipa"],
+    },
 }
 
 

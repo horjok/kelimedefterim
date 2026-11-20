@@ -10,9 +10,46 @@
 //   ("bəl" → "tə·bəl" → "fər·tə·bəl" → "ˈkʌm·fər·tə·bəl"). Heceler tek tek seslendirilemez (tarayıcı IPA okuyamaz);
 //   kelimenin tamamı normal ve yavaş dinlenir.
 // Başka sayfalar "sozluk.html?q=kelime" ile doğrudan arama açabilir ("&hece=1" heceleme panelini de açar).
+//
+// İspanyolca (20 Kasım 2026): Free Dictionary API İspanyolca bilmiyor (404). Tanımlar Wiktionary'nin REST
+// uç noktasından gelir (en.wiktionary.org, CORS açık, İngilizce açıklamalı; HTML'i DOMParser ile düz metne çevrilir).
+// Okunuş /api/syllables'tan (İspanya aksanı), ses tarayıcının es-ES sesli okumasıyla. Bağlantılar: RAE ve
+// Cambridge İspanyolca–İngilizce. PlayPhrase ve Yarn yalnızca İngilizce olduğu için gizlenir; YouGlish "spanish" ile arar.
 
 const DICT_API = "https://api.dictionaryapi.dev/api/v2/entries/en/";
+const DICT_WIKTIONARY = "https://en.wiktionary.org/api/rest_v1/page/definition/";
 const DICT_CAMBRIDGE = "https://dictionary.cambridge.org/dictionary/";
+
+// Dile göre sayfa metinleri ve dış bağlantılar (iki bağlantı kutusu: #dictCambridgeTr, #dictCambridgeEn)
+const DICT_SOURCES = {
+    en: {
+        hint: "İngilizce bir kelime ara: tanımı, okunuşu ve örnekleri burada; tam kayıt için tek tıkla Cambridge Dictionary.",
+        placeholder: "ör. garden, pick up",
+        linksLabel: "Cambridge Dictionary'de aç",
+        links: [
+            { label: "İngilizce–Türkçe ↗", url: (word) => dictCambridgeUrl("english-turkish", word) },
+            { label: "İngilizce tanım ↗", url: (word) => dictCambridgeUrl("english", word) },
+        ],
+        short: "Cambridge",
+        source: "Tanımlar: Free Dictionary API (Wiktionary, CC BY-SA). Cambridge'in kendi içeriği yalnızca kendi sitesinde görüntülenir.",
+        youglish: "english",
+        scenes: true,
+    },
+    es: {
+        hint: "İspanyolca bir kelime ara: Türkçe anlamı, okunuşu (İspanya), heceleri ve Wiktionary tanımları burada; RAE ve Cambridge tek tıkla.",
+        placeholder: "ör. estación, hablar",
+        linksLabel: "Sözlüklerde aç",
+        links: [
+            { label: "RAE (İspanyolca tanım) ↗", url: (word) => "https://dle.rae.es/" + encodeURIComponent(word) },
+            { label: "İspanyolca–İngilizce ↗", url: (word) => dictCambridgeUrl("spanish-english", word) },
+        ],
+        short: "RAE",
+        source: "Tanımlar: Wiktionary (CC BY-SA), İngilizce açıklamalı. Okunuş kurallarla üretilir (İspanya aksanı). RAE ve Cambridge'in içeriği yalnızca kendi sitelerinde görüntülenir.",
+        youglish: "spanish",
+        scenes: false,
+    },
+};
+const DICT_SOURCE = DICT_SOURCES[currentLang()] || DICT_SOURCES.en;
 const DICT_HISTORY_KEY = "dictHistory";
 const DICT_HISTORY_MAX = 12;
 const DICT_MAX_DEFINITIONS = 5;  // her tür için gösterilen en çok tanım
@@ -91,8 +128,8 @@ function dictSearch(rawWord) {
     document.getElementById("dictMeanings").replaceChildren();
     document.getElementById("dictSource").hidden = true;
     document.getElementById("dictSaveResult").textContent = "";
-    document.getElementById("dictCambridgeTr").href = dictCambridgeUrl("english-turkish", word);
-    document.getElementById("dictCambridgeEn").href = dictCambridgeUrl("english", word);
+    document.getElementById("dictCambridgeTr").href = DICT_SOURCE.links[0].url(word);
+    document.getElementById("dictCambridgeEn").href = DICT_SOURCE.links[1].url(word);
     dictSetStatus("Aranıyor…");
 
     dictFindVideos(word, request);
@@ -105,6 +142,11 @@ function dictSearch(rawWord) {
     dictPaintSave();
     if (!saved) {
         dictTranslate(word, request);
+    }
+
+    if (currentLang() !== LANG_DEFAULT) {
+        dictSearchWiktionary(word, request);
+        return;
     }
 
     fetch(DICT_API + encodeURIComponent(word))
@@ -122,7 +164,7 @@ function dictSearch(rawWord) {
                 return;
             }
             if (!Array.isArray(entries) || entries.length === 0) {
-                dictSetStatus(`"${word}" bu sözlükte bulunamadı. Yazımı kontrol et ya da Cambridge'de aç.`, "error");
+                dictSetStatus(`"${word}" bu sözlükte bulunamadı. Yazımı kontrol et ya da ${DICT_SOURCE.short}'de aç.`, "error");
                 return;
             }
             dictRender(entries);
@@ -133,7 +175,59 @@ function dictSearch(rawWord) {
                 return;
             }
             let message = error.name === "TypeError" ? "Sözlük servisine ulaşılamadı. İnternet bağlantını kontrol et." : error.message;
-            dictSetStatus(message + " Cambridge bağlantıları yine de çalışır.", "error");
+            dictSetStatus(message + ` ${DICT_SOURCE.short} bağlantıları yine de çalışır.`, "error");
+            console.error("Sözlük hatası:", error);
+        });
+}
+
+// ----- İspanyolca (ve sonraki diller): Wiktionary -----
+
+// Wiktionary tanımları HTML gelir; DOMParser betik çalıştırmaz, yalnızca düz metni alırız
+function dictPlainText(html) {
+    return new DOMParser().parseFromString(String(html || ""), "text/html").body.textContent.replace(/\s+/g, " ").trim();
+}
+
+function dictSearchWiktionary(word, request) {
+    let code = currentLang();
+    fetch(DICT_WIKTIONARY + encodeURIComponent(word))
+        .then(function (response) {
+            if (response.status === 404) {
+                return null;
+            }
+            if (!response.ok) {
+                throw new Error(`Sözlük servisi hata verdi (kod ${response.status}).`);
+            }
+            return response.json();
+        })
+        .then(function (data) {
+            if (request !== dictRequest) {
+                return;
+            }
+            let entries = data && Array.isArray(data[code]) ? data[code] : [];
+            let meanings = entries.map(function (entry) {
+                let definitions = (entry.definitions || []).map(function (item) {
+                    let example = (item.parsedExamples || [])[0];
+                    return {
+                        definition: dictPlainText(item.definition),
+                        example: example ? dictPlainText(example.example) : dictPlainText((item.examples || [])[0]),
+                        translation: example ? dictPlainText(example.translation) : "",
+                    };
+                }).filter((item) => item.definition !== "");
+                return { partOfSpeech: entry.partOfSpeech || "", definitions: definitions };
+            }).filter((meaning) => meaning.definitions.length > 0);
+            if (meanings.length === 0) {
+                dictSetStatus(`"${word}" Wiktionary'de bulunamadı. Yazımı (á, é, ñ) kontrol et ya da ${DICT_SOURCE.short}'de aç.`, "error");
+                return;
+            }
+            dictRender([{ phonetics: [], meanings: meanings }]);
+            dictRemember(word);
+        })
+        .catch(function (error) {
+            if (request !== dictRequest) {
+                return;
+            }
+            let message = error.name === "TypeError" ? "Sözlük servisine ulaşılamadı. İnternet bağlantını kontrol et." : error.message;
+            dictSetStatus(message + ` ${DICT_SOURCE.short} bağlantıları yine de çalışır.`, "error");
             console.error("Sözlük hatası:", error);
         });
 }
@@ -186,8 +280,10 @@ function dictRender(entries) {
             ipa = entry.phonetic;
         }
     }
-    dictCurrent.ipa = ipa;
-    document.getElementById("dictIpa").textContent = ipa;
+    if (ipa) {  // İspanyolcada okunuş Wiktionary'den değil, /api/syllables'tan gelir (wbLoad)
+        dictCurrent.ipa = ipa;
+        document.getElementById("dictIpa").textContent = ipa;
+    }
 
     let audioBox = document.getElementById("dictAudio");
     for (let url of audios) {
@@ -216,7 +312,7 @@ function dictRender(entries) {
             for (let item of definitions.slice(0, DICT_MAX_DEFINITIONS)) {
                 let row = dictElement("li", "", item.definition);
                 if (item.example) {
-                    row.appendChild(dictElement("span", "dict-example", item.example));
+                    row.appendChild(dictElement("span", "dict-example", item.translation ? `${item.example} (${item.translation})` : item.example));
                     if (!dictCurrent.example) {
                         dictCurrent.example = item.example;
                     }
@@ -244,6 +340,7 @@ function dictRender(entries) {
         }
     }
     dictSetStatus("");
+    document.getElementById("dictSource").textContent = DICT_SOURCE.source;
     document.getElementById("dictSource").hidden = false;
 }
 
@@ -259,7 +356,7 @@ function dictFindVideos(word, request) {
     document.getElementById("dictVideos").hidden = false;
     document.getElementById("dictPlayPhrase").href = `https://www.playphrase.me/#/search?q=${query}`;
     document.getElementById("dictYarn").href = `https://getyarn.io/yarn-find?text=${query}`;
-    document.getElementById("dictYouglishSite").href = `https://youglish.com/pronounce/${query}/english`;
+    document.getElementById("dictYouglishSite").href = `https://youglish.com/pronounce/${query}/${DICT_SOURCE.youglish}`;
     dictYouglishReset();
 
     let status = document.getElementById("dictOwnStatus");
@@ -355,7 +452,7 @@ function dictYouglishFetch() {
     document.getElementById("dictYouglishBox").hidden = false;
     document.getElementById("dictYouglishLoad").hidden = true;
     dictYouglishStatus("Örnekler aranıyor…");
-    dictYouglishWidget.fetch(dictCurrent.word, "english");
+    dictYouglishWidget.fetch(dictCurrent.word, DICT_SOURCE.youglish);
 }
 
 // widget.js yüklenince bu adı çağırır (YouGlish API'sinin kuralı)
@@ -424,8 +521,22 @@ function wbLoad(word, request) {
     fetch(apiUrl(`/api/syllables?word=${encodeURIComponent(word)}`))
         .then(function (response) { return response.ok ? response.json() : null; })
         .then(function (data) {
-            if (request !== dictRequest || !data || data.syllables.length < 2) {
-                return;  // sözlükte yok ya da tek heceli: düğme görünmez
+            if (request !== dictRequest || !data) {
+                return;
+            }
+            // İngilizce dışında okunuş sözlükten gelmez: hecelerden kurulur, sesli okuma düğmesi eklenir
+            if (currentLang() !== LANG_DEFAULT && data.syllables.length > 0) {
+                dictCurrent.ipa = data.syllables.map(wbSyllableText).join("");
+                document.getElementById("dictIpa").textContent = `/${dictCurrent.ipa}/`;
+                if ("speechSynthesis" in window) {
+                    let button = dictElement("button", "mini", "🔊 Dinle");
+                    button.type = "button";
+                    button.addEventListener("click", function () { wbSpeak(0.9); });
+                    document.getElementById("dictAudio").replaceChildren(button);
+                }
+            }
+            if (data.syllables.length < 2) {
+                return;  // tek heceli: heceleme düğmesi görünmez
             }
             wbSyllables = data.syllables;
             document.getElementById("dictSyllOpen").hidden = false;
@@ -574,6 +685,15 @@ document.getElementById("wbNext").addEventListener("click", function () { wbGo(w
 document.getElementById("wbListen").addEventListener("click", function () { wbSpeak(0.9); });
 document.getElementById("wbSlow").addEventListener("click", function () { wbSpeak(0.5); });
 document.getElementById("wbEnd").addEventListener("click", wbClose);
+
+// Sayfa metinleri seçili dile göre
+document.querySelector("#dictionary .section-hint").textContent = DICT_SOURCE.hint;
+document.getElementById("dictText").placeholder = DICT_SOURCE.placeholder;
+document.querySelector(".dict-cambridge .dict-label").textContent = DICT_SOURCE.linksLabel;
+document.getElementById("dictCambridgeTr").textContent = DICT_SOURCE.links[0].label;
+document.getElementById("dictCambridgeEn").textContent = DICT_SOURCE.links[1].label;
+document.getElementById("dictPlayPhrase").hidden = !DICT_SOURCE.scenes;
+document.getElementById("dictYarn").hidden = !DICT_SOURCE.scenes;
 
 dictRenderHistory();
 {

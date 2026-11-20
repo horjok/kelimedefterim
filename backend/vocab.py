@@ -16,7 +16,7 @@ from cefrpy import CEFRAnalyzer
 from lemminflect import getAllLemmas
 from wordfreq import zipf_frequency
 
-from . import storage
+from . import languages, storage
 from .phrasal_verbs import OBJECT_PRONOUNS, PHRASAL_VERBS, SEPARABLE_PARTICLES
 
 LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
@@ -190,27 +190,38 @@ def find_phrasals(tokens):
 
 # ===== Türkçe çeviri (Google Translate, önbellekli) =====
 
-CACHE_FILE = "translations.json"  # storage adı
-TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=tr&dt=t"
-cache_lock = threading.Lock()
+# Her dilin kendi çeviri önbelleği var: İngilizce "translations.json", İspanyolca "es/translations.json".
+CACHE_FILE = "translations.json"  # storage adı (dile göre languages.storage_name ile ayrılır)
+TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single?client=gtx&sl={source}&tl=tr&dt=t"
+cache_lock = threading.RLock()  # wordbank.py kilidi tutarken save_translations çağırır: yeniden girilebilir olmalı
 
 
-def load_translations():
-    data = storage.read(CACHE_FILE, {})
+def load_translations(lang="en"):
+    data = storage.read(languages.storage_name(lang, CACHE_FILE), {})
     return data if isinstance(data, dict) else {}
 
 
-translations = load_translations()
+translations = load_translations()  # İngilizce (wordbank.py de doğrudan kullanır)
+translations_by_lang = {"en": translations}
 
 
-def save_translations():
-    storage.merge_write(CACHE_FILE, translations)
+def translations_for(lang):
+    with cache_lock:
+        if lang not in translations_by_lang:
+            translations_by_lang[lang] = load_translations(lang)
+        return translations_by_lang[lang]
 
 
-def google_translate(texts):
+def save_translations(lang="en"):
+    with cache_lock:
+        storage.merge_write(languages.storage_name(lang, CACHE_FILE), translations_for(lang))
+
+
+def google_translate(texts, lang="en"):
     """Birçok ifadeyi tek istekte çevirir: satır satır gönderip satır satır geri alır."""
     body = urllib.parse.urlencode({"q": "\n".join(texts)}).encode()
-    request = urllib.request.Request(TRANSLATE_URL, data=body, headers={
+    url = TRANSLATE_URL.format(source=languages.info(lang)["translate"])
+    request = urllib.request.Request(url, data=body, headers={
         "User-Agent": "Mozilla/5.0",
         "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
     })
@@ -220,14 +231,15 @@ def google_translate(texts):
     return [line.strip() for line in text.split("\n")]
 
 
-def translate_all(texts):
+def translate_all(texts, lang="en"):
     """Önbellekte olmayanları 80'erli gruplar halinde çevirir. Hata olursa mesajını döndürür."""
+    translations = translations_for(lang)
     missing = [t for t in dict.fromkeys(texts) if t not in translations]
     error = None
     for start in range(0, len(missing), 80):
         chunk = missing[start:start + 80]
         try:
-            results = google_translate(chunk)
+            results = google_translate(chunk, lang)
         except Exception as exc:  # ağ hatası, engelleme, beklenmeyen yanıt
             error = f"Çeviri servisine ulaşılamadı ({exc.__class__.__name__}). Anlamlar eksik olabilir."
             break
@@ -237,19 +249,19 @@ def translate_all(texts):
             for source, result in zip(chunk, results):
                 translations[source] = result
     if missing:
-        with cache_lock:
-            save_translations()
+        save_translations(lang)
     return error
 
 
-def translate_sentence(text):
+def translate_sentence(text, lang="en"):
     """Tek bir cümleyi Türkçeye çevirir (önbellekli). Ağ hatasında istisna fırlatır."""
+    translations = translations_for(lang)
     key = "§" + text  # kelime çevirileriyle karışmasın diye cümle anahtarları § ile başlar
     if key not in translations:
-        result = " ".join(google_translate([text])).strip()
+        result = " ".join(google_translate([text], lang)).strip()
         with cache_lock:
             translations[key] = result
-            save_translations()
+            save_translations(lang)
     return translations[key]
 
 

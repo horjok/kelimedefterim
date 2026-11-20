@@ -25,7 +25,7 @@ function buildupWords(line) {
     return line.text
         .replace(/\[[^\]]*\]|\([^)]*\)/g, " ")  // (rock music), [Applause]
         .split(/\s+/)
-        .filter((text) => /[A-Za-z0-9]/.test(text));
+        .filter((text) => /[\p{L}\p{N}]/u.test(text));
 }
 
 // Cümleyi anlam öbeklerine böler: noktalamadan sonra ve BUILDUP_STARTERS kelimelerinden önce

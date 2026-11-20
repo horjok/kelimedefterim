@@ -4,5 +4,6 @@ eng-to-ipa>=0.0.2
 cefrpy>=1.0
 lemminflect>=0.2
 wordfreq>=3.0
+simplemma>=2.0       # İspanyolca yalın hâl (hablo → hablar)
 # İsteğe bağlı: yalnızca backend/import_wordlist.py (PDF kelime listesi içe aktarma) için
 # pdfminer.six

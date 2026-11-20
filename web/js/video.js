@@ -696,7 +696,7 @@ function noteUserScroll() {
 const MODES = ["lines", "dictation", "vocab", "grammar"];
 
 function setMode(name, scroll) {
-    if (!MODES.includes(name)) {
+    if (!MODES.includes(name) || (name === "grammar" && !langHas("grammar"))) {
         name = "lines";
     }
     let previousMode = currentMode;
@@ -747,6 +747,9 @@ function setMode(name, scroll) {
 document.querySelectorAll(".mode").forEach(function (button) {
     button.addEventListener("click", function () { setMode(button.dataset.mode, true); });
 });
+
+// Seçili dilde video gramer analizi yoksa (İspanyolca, şimdilik) Gramer modu gizlenir
+document.getElementById("modeGrammar").hidden = !langHas("grammar");
 
 // Son kullanılan mod hatırlansın
 let savedMode = "lines";
@@ -993,7 +996,8 @@ function renderVocabList() {
 function renderLevelChips() {
     let chips = document.getElementById("levelChips");
     chips.innerHTML = "";
-    let groups = [...Object.keys(vocab.levels), "phrasal"];
+    let groups = [...Object.keys(vocab.levels)];
+    if (langHas("phrasal")) groups.push("phrasal");  // İspanyolcada phrasal verb yok
     if (vocab.basic) groups.push("basic");
     let labels = { phrasal: "Phrasal verbs", basic: "Temel" };
 
@@ -1073,7 +1077,8 @@ function loadVocab(url) {
                 status.className = "transcript-hint error";
             } else {
                 let basicCount = (vocab.basic || []).length;
-                status.textContent = `${total} öğrenmeye değer kelime, ${vocab.phrasal.length} phrasal verb. ` +
+                let phrasalText = langHas("phrasal") ? `, ${vocab.phrasal.length} phrasal verb` : "";
+                status.textContent = `${total} öğrenmeye değer kelime${phrasalText}. ` +
                     `${basicCount} çok yaygın kelime "Temel" grubuna ayrıldı. Karta dokununca video kelimenin ilk geçtiği yere gider.`;
             }
             renderLevelChips();
