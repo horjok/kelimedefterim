@@ -23,7 +23,7 @@ from urllib.error import HTTPError
 
 from flask import Flask, Response, abort, g, jsonify, request, send_from_directory
 
-from . import ielts, languages, lessons, spanish, wordbank
+from . import ielts, languages, lessons, spanish, synonyms, wordbank
 from .config import APP_PASSWORD, APP_PUBLIC, ON_VERCEL, WEB_DIR
 from .gemini import GeminiError
 from .grammar import GrammarError, analyze_grammar
@@ -317,6 +317,14 @@ def lesson():
 def lesson_quiz():
     """Konunun alıştırması: {"topic": anahtar}."""
     return ielts_call(lambda: lessons.make_quiz(str(body_value("topic")), g.lang))
+
+
+# ===== Eş anlamlılar (Kartlar, Kelimeler, Sözlük) =====
+
+@app.get("/api/synonyms")
+def synonym_list():
+    """Kelimenin anlamlarına göre gruplanmış eş anlamlıları: ?word=<kelime>. İlk istekte Gemini üretir, sonra önbellekten."""
+    return ielts_call(lambda: synonyms.get_synonyms(request.args.get("word", ""), g.lang))
 
 
 # ===== Pekiştir sayfası: seviyeli kelime haznesi =====

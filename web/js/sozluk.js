@@ -128,6 +128,8 @@ function dictSearch(rawWord) {
     document.getElementById("dictMeanings").replaceChildren();
     document.getElementById("dictSource").hidden = true;
     document.getElementById("dictSaveResult").textContent = "";
+    document.getElementById("dictSynonyms").replaceChildren();
+    document.getElementById("dictSynLoad").hidden = false;
     document.getElementById("dictCambridgeTr").href = DICT_SOURCE.links[0].url(word);
     document.getElementById("dictCambridgeEn").href = DICT_SOURCE.links[1].url(word);
     dictSetStatus("Aranıyor…");
@@ -673,6 +675,14 @@ document.getElementById("dictForm").addEventListener("submit", function (event) 
 document.getElementById("dictSaveList").addEventListener("click", function () { dictToggleSave("inList"); });
 document.getElementById("dictSaveCard").addEventListener("click", function () { dictToggleSave("inCards"); });
 document.getElementById("dictYouglishLoad").addEventListener("click", dictYouglishStart);
+// Eş anlamlılar (synonyms.js): her arama bir Gemini isteği olmasın diye yalnızca düğmeyle yüklenir
+document.getElementById("dictSynLoad").addEventListener("click", function () {
+    if (!dictCurrent || typeof synPanel !== "function") {
+        return;
+    }
+    document.getElementById("dictSynLoad").hidden = true;
+    document.getElementById("dictSynonyms").replaceChildren(synPanel(dictCurrent.word, document.getElementById("dictTr").value));
+});
 document.getElementById("dictSyllOpen").addEventListener("click", function () {
     if (wbStepCount > 0) {
         wbClose();

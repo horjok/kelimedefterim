@@ -87,6 +87,14 @@
                 <p class="transcript-hint" id="dictStatus"></p>
                 <div class="dict-meanings" id="dictMeanings"></div>
                 <p class="lab-note" id="dictSource" hidden>Tanımlar: Free Dictionary API (Wiktionary, CC BY-SA). Cambridge'in kendi içeriği yalnızca kendi sitesinde görüntülenir.</p>
+
+                <!-- Eş anlamlılar (synonyms.js): anlam gruplarına göre, Türkçesi, farkı ve örnek cümlesiyle -->
+                <div class="dict-syn">
+                    <h4 class="dict-subtitle">Eş anlamlılar</h4>
+                    <p class="dict-note">Her eş anlamlının Türkçesi, aranan kelimeden farkı ve bir örnek cümle. Yapay zekâ üretir; her kelime bir kez sorulur, sonra saklanır.</p>
+                    <button type="button" class="mini" id="dictSynLoad">≈ Eş anlamlıları göster</button>
+                    <div id="dictSynonyms"></div>
+                </div>
             </article>
 
             <!-- Kelimenin videolarda, dizi ve filmlerde geçtiği yerler -->
@@ -119,6 +127,7 @@
 <script src="js/lang.js"></script>
 <script src="js/course.js"></script>
 <script src="js/store.js"></script>
+<script src="js/synonyms.js"></script>
 <script src="js/sozluk.js"></script>
 </body>
 </html>

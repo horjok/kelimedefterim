@@ -84,6 +84,7 @@ Kelime haznesi sunucuda birikir. Anlam ve örnek cümle çeviri ile sözlükten 
 ![Sözlük: kelime aranır, sondan başa hecelenir, açılmış videolarda geçtiği cümleler listelenir](docs/gif/sozluk.gif)
 
 - Tanım, IPA, UK/US/AU sesleri, örnekler ve eş anlamlılar Free Dictionary API'den (Wiktionary) gelir.
+- **Eş anlamlılar (İngilizce ve İspanyolca):** kelimenin anlamlarına göre gruplanmış eş anlamlıları, her birinin Türkçesi, aranan kelimeden farkı (resmi, günlük, daha güçlü…) ve bir örnek cümleyle. Kartlar'da cevap açılınca, Kelimeler'de her satırda ve Sözlük'te açılır; beğendiğin eş anlamlıyı tek dokunuşla deftere eklersin. Gemini üretir, her kelime bir kez sorulup saklanır.
 - **Sondan başa heceleme:** kelime IPA heceleriyle sondan başa doğru kurulur, ana vurgulu hece işaretlenir.
 - **Videolarda geçtiği yerler:** kelime (çekimleriyle birlikte: fall → fell, falling) daha önce açtığın videolarda aranır. Her cümle, videoyu o saniyede açan bir bağlantıdır. İstersen YouGlish örnekleri de yüklenir.
 - Cambridge Dictionary'nin içeriği uygulamaya alınmaz, kelimenin Cambridge sayfası yeni sekmede açılır.
@@ -120,6 +121,7 @@ gramer.html ─ /api/lesson, /api/lesson/quiz ──▶ lessons.py ─┼─▶ 
 ielts.html ── /api/ielts/* ───────────────────▶ ielts.py ───┘   (yanıtlar alan alan doğrulanır)
 pekistir.html /api/wordbank ──────────────────▶ wordbank.py     çeviri + sözlük, Gemini denetimi
 sozluk.html ─ /api/occurrences, /api/syllables  transcripts.py, ipa.py
+kartlar · kelimeler · sozluk ─ /api/synonyms ───▶ synonyms.py     Gemini, kelime başına bir kez
            └─ Free Dictionary API (tarayıcıdan doğrudan)
                                                      │
 localStorage: kayıtlı kelimeler, kartlar,            ▼
@@ -144,7 +146,7 @@ python server.py
 
 Tarayıcıda `http://localhost:8000` adresini aç. Sayfalar `file://` ile açılırsa çalışmaz, çünkü `/api/*` isteklerine sunucu gerekir.
 
-**Gemini anahtarı (isteğe bağlı):** Video sayfasındaki gramer modu, Gramer anlatımları, IELTS alıştırmaları ve Pekiştir denetimi için gerekir.
+**Gemini anahtarı (isteğe bağlı):** Video sayfasındaki gramer modu, Gramer anlatımları, IELTS alıştırmaları, eş anlamlılar ve Pekiştir denetimi için gerekir.
 [Google AI Studio](https://aistudio.google.com/)'dan ücretsiz bir anahtar al. Proje köküne `gemini_key.txt` adında bir dosya oluştur ve anahtarı ilk satırına yapıştır; ya da `GEMINI_API_KEY` ortam değişkenini ayarla.
 Anahtar olmadan da transkript, dikte, kelimeler, kartlar ve sözlük çalışır. `gemini_key.txt` `.gitignore` içindedir.
 
@@ -201,7 +203,7 @@ Yerelde açtığın videonun transkripti Redis'e yazılır, Vercel'deki site de 
 |---|---|---|
 | YouTube (youtube-transcript-api, IFrame API) | Transkript ve oynatıcı | Bulut IP'lerini engeller; yerelde sorun yok |
 | Google Translate (resmi olmayan uç nokta) | Türkçe anlamlar ve cümle çevirisi | Yoğun kullanımda 429 döner, o an anlamlar boş kalır |
-| Gemini API | Gramer, IELTS, Pekiştir denetimi | Kendi anahtarının kotası |
+| Gemini API | Gramer, IELTS, eş anlamlılar, Pekiştir denetimi | Kendi anahtarının kotası |
 | Free Dictionary API | Sözlük tanımları, örnek cümleler | Anahtarsız; ara sıra yavaşlar |
 | YouGlish | Videolarda telaffuz örnekleri | Günlük ücretsiz sınır |
 

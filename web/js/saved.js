@@ -96,6 +96,7 @@ function savedShortTitle(title) {
 
 let studyQueue = [];        // sırayla sorulacak kartların anahtarları
 let studyRevealed = false;  // cevap gösterildi mi?
+let studySynOpen = null;    // eş anlamlıları açık olan kartın anahtarı
 let studyDone = 0;          // bu oturumda bitirilen kart sayısı
 let studyCram = false;      // "yine de hepsini çalış": zamanı gelmemiş kartlar da sorulur
 
@@ -277,6 +278,17 @@ function renderStudy() {
 
     if (studyRevealed) {
         card.appendChild(savedElement("p", "study-answer", entry.tr || "—"));
+        // Eş anlamlılar (synonyms.js): cevap açılınca, istenirse
+        if (typeof synToggleButton === "function") {
+            let open = studySynOpen === entry.key;
+            card.appendChild(synToggleButton(open, function () {
+                studySynOpen = open ? null : entry.key;
+                renderStudy();
+            }));
+            if (open) {
+                card.appendChild(synPanel(entry.word, entry.tr));
+            }
+        }
     }
     area.appendChild(card);
 
@@ -426,6 +438,7 @@ if (document.getElementById("studyArea")) {
 // ===== Kelimeler sayfası: aranabilir kelime defteri =====
 
 const LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1", "C2"];
+let wordSynOpen = null;  // eş anlamlıları açık olan satırın anahtarı
 
 function renderWordStats(all) {
     show("statTotal", all.length);
@@ -479,7 +492,19 @@ function wordRowHtml(entry) {
     });
 
     let video = savedVideoButton(entry);
-    row.append(card, ...(video ? [video] : []), remove);
+    let extra = [];
+    // Eş anlamlılar (synonyms.js): satırın altında açılır; liste yeniden çizilince açık kalır
+    let synOpen = wordSynOpen === entry.key;
+    if (typeof synToggleButton === "function") {
+        extra.push(synToggleButton(synOpen, function () {
+            wordSynOpen = synOpen ? null : entry.key;
+            renderSavedList();
+        }));
+    }
+    row.append(card, ...extra, ...(video ? [video] : []), remove);
+    if (synOpen && extra.length) {
+        row.appendChild(synPanel(entry.word, entry.tr));
+    }
     return row;
 }
 
@@ -581,6 +606,8 @@ if (document.getElementById("savedList")) {
         renderSavedList();
     });
 
+    // Eş anlamlılar panelinden deftere eklenen kelime listede hemen görünsün
+    document.addEventListener("saved-change", renderSavedList);
     renderSavedList();
 }
 
