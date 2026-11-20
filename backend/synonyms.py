@@ -105,11 +105,22 @@ def clean_senses(raw, head, lang="en"):
             continue
         synonyms = [s for s in (clean_synonym(entry, head, seen) for entry in item["synonyms"]) if s][:MAX_SYNONYMS]
         if synonyms:
-            pos = as_text(item.get("pos"), 30).lower()
-            if lang != "en":  # İngilizce kayıtlarda tür İngilizce yazılır (verb), diğer dillerde Türkçe (fiil)
-                pos = POS_NAMES.get(pos, pos)
+            pos = turkish_pos(as_text(item.get("pos"), 30))
             senses.append({"pos": pos, "tr": as_text(item.get("tr"), 80), "synonyms": synonyms})
     return senses
+
+
+def turkish_pos(pos):
+    """Model türü İngilizce yazar (adverb); uygulamanın her yerinde olduğu gibi Türkçe gösterilir (zarf)."""
+    pos = (pos or "").strip().lower()
+    return POS_NAMES.get(pos, pos)
+
+
+def with_turkish_pos(record):
+    """Eski kayıtlarda tür İngilizce saklanmış olabilir; döndürürken Türkçeye çevrilir."""
+    senses = [dict(sense, pos=turkish_pos(sense.get("pos"))) if isinstance(sense, dict) else sense
+              for sense in record.get("senses") or []]
+    return {**record, "senses": senses}
 
 
 def get_synonyms(raw_word, lang="en"):
@@ -123,7 +134,7 @@ def get_synonyms(raw_word, lang="en"):
     cache = cache_for(lang)
     saved = cache.get(word)
     if isinstance(saved, dict):
-        return {"word": word, **saved}
+        return {"word": word, **with_turkish_pos(saved)}
 
     system = SYSTEM.format(language=language, extra=SPANISH_EXTRA if lang == "es" else "")
     prompt = PROMPT.format(language=language, word=word, senses=MAX_SENSES, synonyms=MAX_SYNONYMS)

@@ -307,7 +307,7 @@ function pkAnswerCard(known) {
 function pkWordCard(item, extra) {
     let card = ieltsElement("div", "pk-study-item");
     let head = ieltsElement("div", "pk-study-head");
-    let speak = ieltsElement("button", "mini", "🔊");
+    let speak = ieltsElement("button", "mini ico-speaker", "");
     speak.type = "button";
     speak.setAttribute("aria-label", `${item.word} kelimesini dinle`);
     speak.addEventListener("click", function () { pkSpeak(item.word); });
@@ -438,7 +438,11 @@ function pkAsk() {
         pkChoices(pkOptions(item, "word", true), item.word);
     } else if (pkQuestion.kind === "sound") {
         let spoken = pkSpeak(item.word);
-        prompt.textContent = spoken ? "🔊" : `/${item.ipa}/`;
+        if (spoken) {
+            prompt.replaceChildren(ieltsElement("span", "ico-speaker", ""));  // büyük hoparlör simgesi
+        } else {
+            prompt.textContent = `/${item.ipa}/`;
+        }
         sub.textContent = spoken ? "Dinle: hangi kelimeyi duydun?" : "Bu okunuş hangi kelimenin?";
         listen.hidden = !spoken;
         pkChoices(pkOptions(item, "word", true), item.word);

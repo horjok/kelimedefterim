@@ -380,7 +380,7 @@ textarea.dictation-typed:focus { border-color: var(--ink); outline: none; }
 }
 .level-chip b { font-weight: 400; color: var(--ink-soft); margin-left: 2px; }
 .level-chip[aria-pressed="true"] { color: var(--paper); background: var(--primary); }
-.level-chip[aria-pressed="true"] b { color: var(--marker); }
+.level-chip[aria-pressed="true"] b { color: var(--marker-soft); }  /* koyu mavi üstünde sarı yazı 4.5:1'in altında kalıyordu */
 .level-chip.phrasal { box-shadow: inset 0 0 0 1.5px var(--margin); }
 .level-chip.phrasal[aria-pressed="true"] { background: var(--margin); box-shadow: none; }
 .level-chip.phrasal[aria-pressed="true"] b { color: var(--paper); }
@@ -453,6 +453,8 @@ a.button-link:hover { transform: translateY(-1px); }
     max-width: 100%; padding: 8px 10px; border: 1.5px solid var(--rule); border-radius: 10px;
     background: var(--paper); color: var(--ink); font: 400 15px var(--font-body); cursor: pointer;
 }
+/* Seçim etiketin kalan genişliğine sığsın: max-width: 100% etiketin tamamını alıyor, telefonda panelden taşıyordu */
+.study-deck select { flex: 1 1 auto; min-width: 0; }
 #studyArea { max-width: 680px; margin: 0 auto; }
 .study-counter { font-size: 14px; font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .study-card {
@@ -480,6 +482,7 @@ a.button-link:hover { transform: translateY(-1px); }
 .study-actions.rating { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .study-actions .rate { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 9px 4px; }
 .rate-when { font-size: 12px; font-weight: 400; opacity: 0.85; }
+@media (max-width: 400px) { .study-actions .rate { font-size: 14px; } }  /* "Bilmedim" dar telefonda kenarlara değmesin */
 .rate.again { background: var(--error); }
 .rate.hard { background: #A8650F; }
 .rate.good { background: var(--ok); }
@@ -566,7 +569,8 @@ button.mini.danger { color: var(--error); }
 }
 
 @media (min-width: 960px) {
-    .app { display: grid; grid-template-columns: 230px 1fr; }
+    /* minmax(0, 1fr): geniş bir iç öğe (IELTS sekme şeridi gibi) sütunu ekrandan taşırmasın */
+    .app { display: grid; grid-template-columns: 230px minmax(0, 1fr); }
     .sidebar {
         position: sticky; top: 0; height: 100vh;
         flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 28px;
@@ -805,6 +809,10 @@ button.mini:active, a.mini:active, .level-chip:active, .v-save button:active, .b
 @media (pointer: coarse) {
     button.mini, a.mini, .level-chip, .v-save button, .bulk-save button, .segmented button { min-height: 40px; }
     a.mini { display: inline-flex; align-items: center; }
+    /* Video çubuklarındaki seçimler, IELTS sekmeleri ve açılır başlıklar da (UI testi, 20 Kasım 2026) */
+    .shadow-speed select, .dictation-speed select, .ielts-tabs button, .modes .mode { min-height: 40px; }
+    .lab summary, .video-notes summary { padding: 8px 0; }
+    .saved-video-words a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; }
 }
 
 @media (min-width: 960px) {
@@ -1125,7 +1133,14 @@ textarea.ielts-essay { min-height: 280px; font-size: 16px; line-height: 1.6; }
 }
 .pk-topic { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; font-weight: 700; }
 .pk-topic[hidden] { display: none; }
-.pk-topic select { min-height: 44px; max-width: 100%; flex: 1 1 220px; }
+.pk-topic select {
+    min-height: 44px; max-width: 100%; flex: 1 1 220px; padding: 8px 10px;
+    border: 2px solid var(--rule); border-radius: 14px; background: var(--paper); color: var(--ink);
+    font: 400 15px var(--font-body); cursor: pointer;
+}
+.pk-topic select:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.18); }
+/* İşaret kutuları marka rengini alsın (dikte "Otomatik tekrar", IPA, "Kartlara da ekle"…) */
+input[type="checkbox"] { accent-color: var(--primary); }
 
 /* Dil seçimi (lang.js; yalnızca birden çok dil varken görünür) */
 .lang-picker { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; font-weight: 700; color: var(--ink-soft); }
@@ -1139,8 +1154,9 @@ textarea.ielts-essay { min-height: 280px; font-size: 16px; line-height: 1.6; }
 /* Eş anlamlılar paneli (synonyms.js): Kartlar, Kelimeler, Sözlük */
 .syn-toggle { margin-top: 10px; }
 .syn-toggle[aria-expanded="true"] { background: var(--primary-soft); }
-.syn-panel { margin-top: 10px; padding: 12px 14px; border-radius: 16px; background: var(--ground); text-align: left; }
-.saved-row .syn-panel { flex-basis: 100%; margin-top: 4px; }
+.syn-panel { margin-top: 10px; padding: 14px 18px; border-radius: 16px; background: var(--ground); text-align: left; }
+.saved-row .syn-panel { flex-basis: 100%; margin: 4px 0 4px 16px; border-left: 3px solid var(--rule); }  /* satırın altında, kelimeden içeride */
+@media (max-width: 720px) { .saved-row .syn-panel { margin-left: 6px; padding: 12px 14px; } }
 .syn-status { margin: 0; color: var(--ink-soft); }
 .syn-status.error { color: var(--error); }
 .syn-status .mini { margin-left: 6px; }
@@ -1149,7 +1165,8 @@ textarea.ielts-essay { min-height: 280px; font-size: 16px; line-height: 1.6; }
 .syn-sense-title { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; font-weight: 700; color: var(--ink); }
 .syn-sense-title .chip { padding: 1px 8px; font-size: 12px; }
 .syn-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.syn-item { padding: 10px 12px; border-radius: 12px; background: var(--paper); }
+/* .syn-list ile: Kelimeler'deki genel .word-list li kuralı (padding: 10px 0, alt çizgi) iç boşluğu ezmesin */
+.syn-list .syn-item { padding: 12px 16px; border: 0; border-radius: 12px; background: var(--paper); }
 .syn-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
 .syn-word { font: 800 18px var(--font-display); color: var(--ink); }
 .syn-tr { color: var(--ink); }
@@ -1162,3 +1179,13 @@ textarea.ielts-essay { min-height: 280px; font-size: 16px; line-height: 1.6; }
 .syn-credit { margin: 10px 0 0; font-size: 12px; color: var(--ink-soft); }
 .dict-syn { margin-top: 16px; }
 .dict-syn #dictSynLoad[hidden] { display: none; }
+
+/* Hoparlör simgesi: 🔊 emojisi Windows'ta soluk gri çiziliyor ve düğme devre dışıymış gibi görünüyordu.
+   SVG maske, rengini düğmenin yazı renginden alır. Kullanım: class="mini ico-speaker" (yalnız simge için metni boş bırak, aria-label ver). */
+.ico-speaker::before {
+    content: ""; display: inline-block; flex: none; width: 1.1em; height: 1.1em; margin-right: 0.35em; vertical-align: -0.18em;
+    background: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 5 6 9H3v6h3l5 4z' fill='black'/%3E%3Cpath d='M15.5 8.5a5 5 0 0 1 0 7'/%3E%3Cpath d='M18.5 5.5a9 9 0 0 1 0 13'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 5 6 9H3v6h3l5 4z' fill='black'/%3E%3Cpath d='M15.5 8.5a5 5 0 0 1 0 7'/%3E%3Cpath d='M18.5 5.5a9 9 0 0 1 0 13'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.ico-speaker:empty::before { margin-right: 0; }

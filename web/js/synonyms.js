@@ -107,7 +107,7 @@ function synItem(synonym, pos) {
 
     let actions = synElement("div", "syn-actions");
     if ("speechSynthesis" in window) {
-        let listen = synElement("button", "mini", "🔊 Dinle");
+        let listen = synElement("button", "mini ico-speaker", "Dinle");
         listen.type = "button";
         listen.setAttribute("aria-label", `${synonym.word}: dinle`);
         listen.addEventListener("click", function () { synSpeak(synonym.word); });

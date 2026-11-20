@@ -259,10 +259,10 @@ function dictTranslate(word, request) {
 // ----- Sonucu çizme -----
 
 function dictAudioLabel(url) {
-    if (url.includes("-uk")) return "🔊 UK";
-    if (url.includes("-us")) return "🔊 US";
-    if (url.includes("-au")) return "🔊 AU";
-    return "🔊 Dinle";
+    if (url.includes("-uk")) return "UK";
+    if (url.includes("-us")) return "US";
+    if (url.includes("-au")) return "AU";
+    return "Dinle";
 }
 
 function dictRender(entries) {
@@ -289,7 +289,7 @@ function dictRender(entries) {
 
     let audioBox = document.getElementById("dictAudio");
     for (let url of audios) {
-        let button = dictElement("button", "mini", dictAudioLabel(url));
+        let button = dictElement("button", "mini ico-speaker", dictAudioLabel(url));
         button.type = "button";
         button.addEventListener("click", function () {
             new Audio(url).play().catch(function () {
@@ -531,7 +531,7 @@ function wbLoad(word, request) {
                 dictCurrent.ipa = data.syllables.map(wbSyllableText).join("");
                 document.getElementById("dictIpa").textContent = `/${dictCurrent.ipa}/`;
                 if ("speechSynthesis" in window) {
-                    let button = dictElement("button", "mini", "🔊 Dinle");
+                    let button = dictElement("button", "mini ico-speaker", "Dinle");
                     button.type = "button";
                     button.addEventListener("click", function () { wbSpeak(0.9); });
                     document.getElementById("dictAudio").replaceChildren(button);
@@ -602,7 +602,7 @@ function wbSpeak(rate) {
         return;
     }
     if (!("speechSynthesis" in window)) {
-        document.getElementById("wbHint").textContent = "Tarayıcın sesli okumayı desteklemiyor; yukarıdaki 🔊 düğmelerini dene.";
+        document.getElementById("wbHint").textContent = "Tarayıcın sesli okumayı desteklemiyor; yukarıdaki UK / US ses düğmelerini dene.";
         return;
     }
     speechSynthesis.cancel();
