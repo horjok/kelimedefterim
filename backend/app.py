@@ -163,11 +163,11 @@ def grammar():
     if not video_id:
         return error("Bu geçerli bir YouTube linki değil.", 400)
     try:
-        lines = get_transcript(video_id)["lines"]
+        lines = get_transcript(video_id, g.lang)["lines"]
     except TranscriptError as exc:
         return error(exc.message, exc.status)
     try:
-        return jsonify(analyze_grammar(video_id, lines))
+        return jsonify(analyze_grammar(video_id, lines, g.lang))
     except GrammarError as exc:
         return jsonify({"error": exc.message, "code": exc.code}), exc.status
 
@@ -310,13 +310,13 @@ def ielts_videos():
 @app.get("/api/lesson")
 def lesson():
     """Konunun ayrıntılı anlatımı: ?topic=<anahtar>[&fresh=1]. İlk açılışta Gemini üretir, sonra önbellekten gelir."""
-    return ielts_call(lambda: lessons.get_lesson(request.args.get("topic", ""), request.args.get("fresh") == "1"))
+    return ielts_call(lambda: lessons.get_lesson(request.args.get("topic", ""), request.args.get("fresh") == "1", g.lang))
 
 
 @app.post("/api/lesson/quiz")
 def lesson_quiz():
     """Konunun alıştırması: {"topic": anahtar}."""
-    return ielts_call(lambda: lessons.make_quiz(str(body_value("topic"))))
+    return ielts_call(lambda: lessons.make_quiz(str(body_value("topic")), g.lang))
 
 
 # ===== Pekiştir sayfası: seviyeli kelime haznesi =====
@@ -324,7 +324,7 @@ def lesson_quiz():
 @app.get("/api/wordbank/sources")
 def word_bank_sources():
     """İçe aktarılmış kelime listesi var mı: {"name": ad, "levels": {"B2": adet, ...}}."""
-    return jsonify(wordbank.list_sources())
+    return jsonify(wordbank.list_sources(g.lang))
 
 
 @app.post("/api/wordbank")
@@ -338,5 +338,6 @@ def word_bank():
             count if isinstance(count, int) and not isinstance(count, bool) else 12,
             [word for word in exclude if isinstance(word, str)][:3000] if isinstance(exclude, list) else [],
             str(body_value("topic", "") or ""),  # kelime konusu (web/data/kelime-konulari.json); boş = karışık
+            g.lang,
         )
     return ielts_call(action)

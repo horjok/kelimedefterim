@@ -131,7 +131,7 @@ seri, ilerleme, notlar                          storage.py: önbellek
 - **Kullanıcı verisi** yalnızca tarayıcıda (localStorage) durur. Sunucuda hesap ya da kullanıcı verisi yoktur.
 - **Önbellek:** çeviriler, transkriptler, gramer analizleri, konu anlatımları ve kelime haznesi bir kez üretilip saklanır. Aynı istek ikinci kez dış servise gitmez. Rate limit'e karşı asıl önlem budur.
 - **Model çıktısına güvenilmez:** Gemini yanıtları JSON olarak istenir ve alan alan denetlenir. Satır numarası tutmayan örnek, cevabı seçeneklerde olmayan soru ya da kaynakta geçmeyen alıntı atılır.
-- **Çoklu dil:** API `?lang=` alır, localStorage anahtarları dile göre ayrılır (destesi, defteri ayrı). Kenar çubuğundaki **Dil** seçimiyle İspanyolcaya geçilir: video, dikte, kelimeler, kartlar ve sözlük çalışır. Telaffuz İspanya aksanına göre kurallarla üretilir (cielo /ˈθjelo/), yalın hâl simplemma ile bulunur, seviye sıklıktan tahmin edilir. Dikte vurgu işaretsiz cevabı da kabul eder (estacion = estación). Gramer ve Pekiştir İspanyolca için henüz yok; IELTS yalnızca İngilizcede.
+- **Çoklu dil:** API `?lang=` alır, localStorage anahtarları dile göre ayrılır (destesi, defteri ayrı). Kenar çubuğundaki **Dil** seçimiyle İspanyolcaya geçilir: video, dikte, kelimeler, kartlar ve sözlük çalışır. Telaffuz İspanya aksanına göre kurallarla üretilir (cielo /ˈθjelo/), yalın hâl simplemma ile bulunur, seviye sıklıktan tahmin edilir. Dikte vurgu işaretsiz cevabı da kabul eder (estacion = estación). İspanyolcanın kendi gramer müfredatı (70 konu, A1–C1, İspanya kullanımı), Gemini anlatımı ve alıştırmaları, videoda Gramer modu ve Pekiştir var: sıklık listesinden A1–C2 ya da 31 konuda B1/B2/C1 konulu listeler (1302 kelime). Phrasal verb'ler ve IELTS yalnızca İngilizcede.
 
 ## Kurulum
 
@@ -188,7 +188,7 @@ Yerelde açtığın videonun transkripti Redis'e yazılır, Vercel'deki site de 
 │   └── phrasal_verbs.py   Phrasal verb sözlüğü
 ├── web/                   Arayüz
 │   ├── *.html             Bugün, Kartlar, Kelimeler, Pekiştir, Kitaplık, Video, Sözlük, Gramer, IELTS
-│   ├── data/              Gramer müfredatı (121 konu), konulu kelime listeleri (31 konu)
+│   ├── data/              Gramer müfredatları (İngilizce 121, İspanyolca 70 konu), konulu kelime listeleri (iki dilde 31 konu)
 │   ├── css/style.css
 │   └── js/
 ├── docs/gif/              README'deki kayıtlar

@@ -20,17 +20,18 @@ LANGUAGES = {
         "transcript": ["en", "en-US", "en-GB", "en-CA", "en-AU"],  # YouTube altyazı dilleri, tercih sırasıyla
         "tts": "en-US",                          # tarayıcının sesli okuma dili
         "translate": "en",                       # Google çevirisinde kaynak dil
-        "features": ["ipa", "phrasal", "ielts", "grammar", "wordbank"],
+        "features": ["ipa", "phrasal", "ielts", "grammar", "wordbank", "topics"],
     },
     # İspanyolca (20 Kasım 2026, adım 2: çekirdek). Telaffuz İspanya aksanı (θ, ʝ), dil paketi backend/spanish.py.
-    # Gramer müfredatı, Pekiştir haznesi ve Gemini istemleri adım 3'te; IELTS yalnızca İngilizcede.
+    # Adım 3 (20 Kasım 2026): gramer müfredatı (web/data/gramer-es.json), video gramer modu ve Pekiştir (A1–C2).
+    # Konulu kelime listeleri web/data/kelime-konulari-es.json; IELTS yalnızca İngilizcede.
     "es": {
         "name": "İspanyolca",
         "native": "Español",
         "transcript": ["es", "es-ES", "es-419", "es-MX", "es-US"],
         "tts": "es-ES",
         "translate": "es",
-        "features": ["ipa"],
+        "features": ["ipa", "grammar", "wordbank", "topics"],
     },
 }
 

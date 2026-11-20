@@ -12,9 +12,12 @@
 
 const LANG_DEFAULT = "en";
 const LANG_INFO = {
-    en: { name: "İngilizce", native: "English", tts: "en-US", features: ["ipa", "phrasal", "ielts", "grammar", "wordbank"] },
-    // İspanyolca: çekirdek hazır (video, dikte, kelimeler, kartlar, sözlük). Gramer ve Pekiştir sonraki adımda; IELTS yok.
-    es: { name: "İspanyolca", native: "Español", tts: "es-ES", features: ["ipa"] },
+    // nameOf / nameOfAcc: "Bunun İngilizcesi", "İngilizcesini yaz" gibi ekli biçimler (ünlü uyumu dile göre)
+    en: { name: "İngilizce", nameOf: "İngilizcesi", nameOfAcc: "İngilizcesini", native: "English", tts: "en-US",
+        features: ["ipa", "phrasal", "ielts", "grammar", "wordbank", "topics"] },
+    // İspanyolca: video, dikte, kelimeler, kartlar, sözlük, gramer, Pekiştir (A1–C2 + konulu listeler). IELTS yok.
+    es: { name: "İspanyolca", nameOf: "İspanyolcası", nameOfAcc: "İspanyolcasını", native: "Español", tts: "es-ES",
+        features: ["ipa", "grammar", "wordbank", "topics"] },
 };
 
 // Sayfa → gerektirdiği özellik (backend/app.py FEATURE_PATHS ile uyumlu)
@@ -56,6 +59,11 @@ function langTts() {
 
 function langName() {
     return LANG_INFO[currentLang()].name;
+}
+
+function langNameOf(accusative) {
+    let info = LANG_INFO[currentLang()];
+    return accusative ? info.nameOfAcc : info.nameOf;
 }
 
 function langHas(feature) {

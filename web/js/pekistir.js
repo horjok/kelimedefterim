@@ -378,7 +378,8 @@ function pkBlank(item) {
     if (!item.example) {
         return null;
     }
-    let pattern = new RegExp(`\\b${item.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+    // \b yalnızca ASCII harfleri tanır ("árbol" bulunmazdı): Unicode harf sınırı kullanılır
+    let pattern = new RegExp(`(?<![\\p{L}\\p{N}])${item.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}])`, "iu");
     return pattern.test(item.example) ? item.example.replace(pattern, "_____") : null;
 }
 
@@ -433,7 +434,7 @@ function pkAsk() {
         pkChoices(pkOptions(item, "tr", false), item.tr);
     } else if (pkQuestion.kind === "toEn") {
         prompt.textContent = item.tr;
-        sub.textContent = "Bunun İngilizcesi hangisi?";
+        sub.textContent = `Bunun ${langNameOf()} hangisi?`;
         pkChoices(pkOptions(item, "word", true), item.word);
     } else if (pkQuestion.kind === "sound") {
         let spoken = pkSpeak(item.word);
@@ -448,7 +449,7 @@ function pkAsk() {
         pkChoices(pkOptions(item, "word", true), item.word);
     } else {
         prompt.textContent = item.tr;
-        sub.textContent = "Harflere dokunarak (ya da klavyeyle) İngilizcesini yaz.";
+        sub.textContent = `Harflere dokunarak (ya da klavyeyle) ${langNameOf(true)} yaz.`;
         listen.hidden = !("speechSynthesis" in window);
         pkTiles(item);
     }
@@ -613,7 +614,11 @@ function pkTiles(item) {
             event.preventDefault();  // çok kelimeli ifadede boşluk yazılmaz; kelime araları hazır
             return;
         }
-        let tile = tiles.find((entry) => !entry.disabled && entry.textContent === event.key.toLowerCase());
+        let key = event.key.toLowerCase();
+        let bare = (text) => text.normalize("NFD").replace(/\p{M}/gu, "");
+        // Vurgulu harf klavyede zor: "a" yazınca boşta "a" yoksa "á" kutucuğu seçilir
+        let tile = tiles.find((entry) => !entry.disabled && entry.textContent === key)
+            || (key.length === 1 ? tiles.find((entry) => !entry.disabled && bare(entry.textContent) === key) : undefined);
         if (tile) {
             place(tile);
         }
@@ -751,9 +756,13 @@ document.addEventListener("keydown", function (event) {
     }
 });
 
+// Phrasal verb'ler, konulu listeler ve içe aktarılan liste yalnızca İngilizcede
+document.querySelector('#pkLevels [data-level="PV"]').hidden = !langHas("phrasal");
+
 {
     let saved = pkRead("pekistir:level", "B1");
-    if (document.querySelector(`#pkLevels [data-level="${saved}"]`)) {
+    let button = document.querySelector(`#pkLevels [data-level="${saved}"]`);
+    if (button && !button.hidden) {
         pkLevel = saved;
     }
     pkTopic = pkRead("pekistir:topic", "");
@@ -761,7 +770,7 @@ document.addEventListener("keydown", function (event) {
 pkPaintStart();
 
 // Konulu kelime listeleri: dosya gelmezse sayfa konusuz (karışık) çalışmaya devam eder
-fetch("data/kelime-konulari.json")
+if (langHas("topics")) fetch(currentLang() === LANG_DEFAULT ? "data/kelime-konulari.json" : `data/kelime-konulari-${currentLang()}.json`)
     .then((response) => response.json())
     .then(function (data) {
         pkTopics = Array.isArray(data.topics) ? data.topics : [];
@@ -770,7 +779,7 @@ fetch("data/kelime-konulari.json")
     .catch(function () { pkTopics = []; });
 
 // İçe aktarılmış kelime listesi varsa konu seçimine eklenir (backend/import_wordlist.py)
-fetch(apiUrl("/api/wordbank/sources"))
+if (langHas("topics")) fetch(apiUrl("/api/wordbank/sources"))
     .then((response) => response.json())
     .then(function (data) {
         pkList = data && typeof data === "object" ? data : {};

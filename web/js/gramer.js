@@ -7,6 +7,30 @@
 // - Ortak parçalar quiz.js içinde: ieltsElement, ieltsApi, ieltsRenderQuestions.
 // - Açık konu adreste durur: gramer.html#present-perfect (geri tuşu ve doğrudan bağlantı çalışır).
 // localStorage: "gramer:progress" { konuAnahtarı: { read, best, total, tries, at } }.
+// Diller (20 Kasım 2026): her dilin kendi müfredatı var (GRAMER_FILES). İspanyolcada konu adı "name",
+// örnek cümle "text" alanında (İngilizcede "en"); gramerName / gramerText ikisini de okur.
+
+const GRAMER_FILES = { en: "data/gramer.json", es: "data/gramer-es.json" };
+const GRAMER_TEXTS = {
+    en: {
+        hint: "İngilizce dil bilgisinin bütün konuları, temelden ileriye. Bir konu seç: anlatımı oku, örnekleri gör, alıştırmasını çöz.",
+        search: "Konu ara: tense, modal, koşul, artikel…",
+        credit: "Konu kapsamı, Grammar in Use serisinin temel, orta ve ileri seviye kitaplarında işlenen konularla karşılaştırılarak hazırlanmıştır. Anlatımlar, örnekler ve alıştırmalar özgündür; kitaplardan alınmamıştır.",
+    },
+    es: {
+        hint: "İspanyolca (İspanya) dil bilgisinin temel konuları, A1'den C1'e. Bir konu seç: özeti ve örnekleri oku, ayrıntılı anlatımı aç, alıştırmasını çöz.",
+        search: "Konu ara: subjuntivo, ser, por, geçmiş…",
+        credit: "Konular ve seviyeleri yaklaşıktır; İspanyolca derslerindeki yaygın sıralama örnek alındı. Özetler, örnekler ve alıştırmalar özgündür; herhangi bir kitaptan alınmamıştır. Çekimler İspanya kullanımına göredir (vosotros dahil).",
+    },
+};
+
+function gramerName(topic) {
+    return topic.name || topic.en || "";
+}
+
+function gramerText(example) {
+    return example.text || example.en || "";
+}
 
 let gramerCategories = [];   // data/gramer.json
 let gramerTopics = [];       // düz liste (önceki / sonraki için)
@@ -65,7 +89,7 @@ function gramerRenderList() {
     for (let category of gramerCategories) {
         let topics = category.topics.filter(function (topic) {
             // Kategori adı da aranır: "modal" yazınca Kipler (Modals) başlığındaki bütün konular çıksın
-            let text = `${category.name} ${topic.tr} ${topic.en} ${topic.pattern} ${topic.use} ${(topic.subtopics || []).join(" ")} ${topic.summary || ""}`.toLocaleLowerCase("tr");
+            let text = `${category.name} ${topic.tr} ${gramerName(topic)} ${topic.pattern} ${topic.use} ${(topic.subtopics || []).join(" ")} ${topic.summary || ""}`.toLocaleLowerCase("tr");
             return gramerLevelMatches(topic) && (!query || text.includes(query));
         });
         if (topics.length === 0) {
@@ -77,7 +101,7 @@ function gramerRenderList() {
         for (let topic of topics) {
             let card = ieltsElement("a", "ielts-gram-card gr-card");
             card.href = `#${topic.key}`;
-            card.append(ieltsElement("span", "ielts-gram-title", topic.tr), ieltsElement("span", "ielts-gram-en", topic.en));
+            card.append(ieltsElement("span", "ielts-gram-title", topic.tr), ieltsElement("span", "ielts-gram-en", gramerName(topic)));
             let chips = ieltsElement("span", "gr-chips");
             chips.appendChild(ieltsElement("span", `chip gr-level gr-level-${topic.level}`, topic.level));
             let done = progress[topic.key];
@@ -127,7 +151,7 @@ function gramerOpen(key) {
     document.getElementById("grLesson").hidden = false;
 
     let head = document.getElementById("grHead");
-    head.replaceChildren(ieltsElement("h3", "", topic.tr), ieltsElement("span", "chip", topic.en),
+    head.replaceChildren(ieltsElement("h3", "", topic.tr), ieltsElement("span", "chip", gramerName(topic)),
         ieltsElement("span", `chip gr-level gr-level-${topic.level}`, topic.level));
     let core = document.getElementById("grCore");
     core.replaceChildren(
@@ -138,7 +162,7 @@ function gramerOpen(key) {
         let list = ieltsElement("ul", "ielts-list gr-examples");
         for (let example of topic.examples) {
             let row = ieltsElement("li");
-            row.appendChild(gramerExampleRow(example.en, example.tr));
+            row.appendChild(gramerExampleRow(gramerText(example), example.tr));
             list.appendChild(row);
         }
         core.appendChild(list);
@@ -243,7 +267,7 @@ function gramerRenderLesson(lesson) {
         box.appendChild(tip);
     }
     document.getElementById("grSource").textContent =
-        `Bu anlatımı yapay zekâ (${lesson.model}) bir İngilizce öğretmeni rolünde yazdı; hata içerebilir. Bir kez üretilir ve saklanır.`;
+        `Bu anlatımı yapay zekâ (${lesson.model}) bir ${langName()} öğretmeni rolünde yazdı; hata içerebilir. Bir kez üretilir ve saklanır.`;
     document.getElementById("grFoot").hidden = false;
 }
 
@@ -355,7 +379,14 @@ document.getElementById("grCheck").addEventListener("click", gramerCheckQuiz);
 window.addEventListener("hashchange", gramerRoute);
 window.addEventListener("popstate", gramerRoute);
 
-fetch("data/gramer.json")
+{
+    let texts = GRAMER_TEXTS[currentLang()] || GRAMER_TEXTS.en;
+    document.querySelector("#gramer > .section-hint").textContent = texts.hint;
+    document.querySelector(".gr-credit").textContent = texts.credit;
+    document.getElementById("grSearch").placeholder = texts.search;
+}
+
+fetch(GRAMER_FILES[currentLang()] || GRAMER_FILES.en)
     .then(function (response) { return response.json(); })
     .then(function (data) {
         gramerCategories = data.categories;

@@ -97,6 +97,10 @@ UNSTRESSED = {"el", "la", "los", "las", "lo", "un", "al", "del", "de", "a", "en"
 
 rank_lock = threading.Lock()
 lemma_rank = None  # yalın hâl -> sıra (0 en sık); ilk kullanımda kurulur (~1,5 sn)
+verb_lemmas = set()  # sıklık listesinde çekimli biçimi görülen mastarlar (tür tahmini için; ranks() doldurur)
+# Bu eklerle biten ve mastara inen biçim görülürse yalın hâl fiildir (lugar, mujer gibi -ar/-er isimler elensin)
+VERB_FORM_ENDINGS = ("ando", "iendo", "yendo", "aba", "aban", "ía", "ían", "ó", "aron", "ieron", "amos", "emos", "imos",
+                     "ado", "ido", "aste", "iste")
 lemma_cache = {}
 
 
@@ -116,6 +120,8 @@ def ranks():
                 if WORD.fullmatch(word):
                     lemma = lemma_of(word)
                     totals[lemma] = totals.get(lemma, 0) + word_frequency(word, LANG)
+                    if lemma != word and lemma.endswith(("ar", "er", "ir", "ír")) and word.endswith(VERB_FORM_ENDINGS):
+                        verb_lemmas.add(lemma)
             ordered = sorted(totals.items(), key=lambda item: -item[1])
             lemma_rank = {lemma: index for index, (lemma, _) in enumerate(ordered)}
     return lemma_rank
@@ -139,10 +145,11 @@ def is_basic(lemma):
 
 
 def pos_of(word, lemma):
-    """Kaba tür tahmini (simplemma tür vermez): mastar hâline inen fiiller ve -mente zarfları."""
+    """Kaba tür tahmini (simplemma tür vermez): çekimli biçimi görülen mastarlar ve -mente zarfları."""
     if lemma in FUNCTION_WORDS:
         return FUNCTION_WORDS[lemma][0]
-    if lemma.endswith(("ar", "er", "ir", "ír")) and (lemma != word or len(word) > 3):
+    ranks()  # verb_lemmas'ı doldurur
+    if lemma in verb_lemmas:
         return "fiil"
     if lemma.endswith("mente"):
         return "zarf"
