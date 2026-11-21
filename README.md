@@ -150,6 +150,19 @@ Tarayıcıda `http://localhost:8000` adresini aç. Sayfalar `file://` ile açıl
 [Google AI Studio](https://aistudio.google.com/)'dan ücretsiz bir anahtar al. Proje köküne `gemini_key.txt` adında bir dosya oluştur ve anahtarı ilk satırına yapıştır; ya da `GEMINI_API_KEY` ortam değişkenini ayarla.
 Anahtar olmadan da transkript, dikte, kelimeler, kartlar ve sözlük çalışır. `gemini_key.txt` `.gitignore` içindedir.
 
+## Testler
+
+Ek paket gerekmez (Python'un `unittest`'i):
+
+```bash
+python -m unittest discover -s tests -v   # 37 entegrasyon testi, ~4 sn, internetsiz
+python -m tests.canli_kontrol             # isteğe bağlı: gerçek YouTube, çeviri ve Wiktionary'ye birkaç istek
+```
+
+Entegrasyon testleri Flask uygulamasını test istemcisiyle uçtan uca çalıştırır (rotalar, dil katmanı, kelime çözümleme,
+IPA, önbellek); yalnızca dış servisler (YouTube, Google çeviri, Gemini, sözlükler) `tests/support.py` içinde taklit edilir.
+Önbellek geçici bir klasördedir: gerçek `cache/` klasörüne ve Redis'e yazılmaz, `gemini_key.txt` okunmaz.
+
 ## Vercel'de yayınlama
 
 Proje Vercel'e olduğu gibi bağlanabilir (Vercel kökteki `server.py` içindeki Flask `app`'ini kendisi bulur, `vercel.json` gerekmez).
@@ -194,6 +207,7 @@ Yerelde açtığın videonun transkripti Redis'e yazılır, Vercel'deki site de 
 │   ├── data/              Gramer müfredatları (İngilizce 121, İspanyolca 70, Almanca 72 konu), konulu kelime listeleri (üç dilde 31 konu)
 │   ├── css/style.css
 │   └── js/
+├── tests/                 Entegrasyon testleri (unittest; dış servisler taklit)
 ├── docs/gif/              README'deki kayıtlar
 └── cache/                 Önbellekler (kendiliğinden oluşur, git'e girmez)
 ```
