@@ -58,6 +58,34 @@ class SongUnitTests(ApiTest):
             songs.song_meta("aaaaaaaaaaaaaaaaaaaaa1")
         self.assertEqual(kapali.exception.status, 502)
 
+    def test_baslik_eki_atilir(self):
+        for title, expected in (("Gece - Remastered 2009", "Gece"), ("Gece - 2011 Remaster", "Gece"), ("Gece - Radio Edit", "Gece"),
+                                ("Gece (feat. Biri)", "Gece"), ("Gece (with Biri) - Live", "Gece"), ("Gece [Live]", "Gece"),
+                                ("Gece", "Gece"), ("(feat. Biri)", "(feat. Biri)"), ("- Live", "- Live")):
+            self.assertEqual(songs.strip_title_suffix(title), expected, title)
+
+    def test_ekli_baslik_bir_kez_daha_aranir(self):
+        found = songs.find_lyrics("Remasterli Gece - Remastered 2009")
+        self.assertEqual([c["id"] for c in found], [9041])
+        searches = [url for url, _ in NET.calls("lrclib.net") if "/api/search" in url]
+        self.assertEqual(len(searches), 2)                       # önce ham başlık, sonra eksiz
+        self.assertIn("track_name=Remasterli%20Gece&", searches[1] + "&")
+
+    def test_eksiz_baslik_tek_arama_yapar(self):
+        for title in ("Uydurma Sabah", "Sozsuz Parca", "Hic Yok Boyle Parca"):   # bulunan, yalnız düz sözlü, hiç olmayan
+            NET.reset()
+            songs.find_lyrics(title)
+            self.assertEqual(len([u for u, _ in NET.calls("lrclib.net") if "/api/search" in u]), 1, title)
+
+    def test_bozuk_govde_ve_kesik_okuma_502(self):
+        import http.client
+        from unittest import mock
+        for failure in (http.client.IncompleteRead(b"x"), http.client.BadStatusLine("x")):
+            with mock.patch.object(songs.urllib.request, "urlopen", side_effect=failure):
+                with self.assertRaises(songs.SongError) as error:
+                    songs.find_lyrics("Uydurma Sabah")
+            self.assertEqual(error.exception.status, 502)
+
     def test_tek_kayit_getirme(self):
         entry = songs.fetch_lyrics(9002)
         self.assertEqual(entry["id"], 9002)
@@ -99,6 +127,11 @@ class SongApiTests(ApiTest):
         self.get("/api/song", url=SP1)                         # ikinci istek: ağ yok
         self.assertEqual(NET.requests, [])
 
+    def test_basliginda_ek_olan_sarki_acilir(self):
+        data = self.get("/api/song", url="https://open.spotify.com/track/aaaaaaaaaaaaaaaaaaaaa5")
+        self.assertEqual(data["lrclibId"], 9041)
+        self.assertIn("lamps", data["lines"][0]["text"])
+
     def test_cok_sanatci_secim_ister(self):
         data = self.get("/api/song", url="https://open.spotify.com/track/aaaaaaaaaaaaaaaaaaaaa2", duration=200)
         self.assertTrue(data["choose"])
@@ -117,6 +150,21 @@ class SongApiTests(ApiTest):
         self.assertEqual(self.cached("transcripts/sp_aaaaaaaaaaaaaaaaaaaaa1.json")["lrclibId"], other["id"])
         self.assertNotEqual(self.get("/api/vocab", url=SP1), vocab_before)   # eski kelime listesi kalmadı
 
+    def test_baska_soz_secimi_kayitli_gramer_analizini_siler(self):
+        key = "sp:aaaaaaaaaaaaaaaaaaaaa1"
+        self.get("/api/song", url=SP1, duration=200.0)
+        self.assertTrue(self.get("/api/grammar", url=SP1)["topics"])
+        self.assertIn(key, self.cached("grammar.json") or {})      # analiz depoya yazıldı
+        asked = len(NET.gemini_prompts)
+        self.assertGreater(asked, 0)
+        self.get("/api/grammar", url=SP1)                          # ikinci istek önbellekten: yeni Gemini çağrısı yok
+        self.assertEqual(len(NET.gemini_prompts), asked)
+
+        self.get("/api/song", url=SP1, lyrics=9011)                # aynı şarkı, başka söz
+        self.assertNotIn(key, self.cached("grammar.json") or {})   # eski analiz depodan silindi
+        self.assertTrue(self.get("/api/grammar", url=SP1)["topics"])
+        self.assertGreater(len(NET.gemini_prompts), asked)         # yeni söz için yeniden Gemini'ye soruldu
+
     def test_choose_onbellegi_atlar_ve_aday_listesi_doner(self):
         self.get("/api/song", url=SP1, duration=200.0)          # şarkı önbellekte
         NET.reset()
@@ -133,9 +181,19 @@ class SongApiTests(ApiTest):
                          "Bu şarkının zaman damgalı sözleri bulunamadı.")
         self.assertIn("Yalnızca tek bir şarkının", self.get("/api/song", 400, url="https://open.spotify.com/album/x")["error"])
         self.assertIn("geçerli bir Spotify", self.get("/api/song", 400, url="https://example.com/x")["error"])
+        self.assertIn("geçerli bir Spotify", self.get("/api/song", 400, url="https://[")["error"])
         self.get("/api/song", 400, url=SP1, lyrics="abc")      # sayı olmayan söz seçimi
         self.get("/api/song", 400, url=SP1, lyrics="-5")
         self.get("/api/transcript", 404, url="https://open.spotify.com/track/aaaaaaaaaaaaaaaaaaaab9")  # önce /api/song
+
+    def test_bozuk_link_400_doner_500_degil(self):
+        for path in ("/api/transcript", "/api/vocab", "/api/grammar"):
+            for link in ("https://[", "http://[", "["):
+                self.assertIn("geçerli bir YouTube", self.get(path, 400, url=link)["error"], (path, link))
+
+    def test_sozsuz_surum_zaman_damgali_mesaj(self):
+        self.assertEqual(self.get("/api/song", 404, url=SP1, lyrics=9021)["error"],
+                         "Bu sürüm için zaman damgalı söz bulunamadı.")
 
     def test_oembed_hatasi(self):
         NET.spotify_down = True

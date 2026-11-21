@@ -85,7 +85,8 @@ TRANSLATIONS = {
 
 # Sahte şarkılar (hepsi uydurma; gerçek şarkı sözü yok). Spotify oEmbed başlığı + LRCLIB kayıtları.
 SONGS = {"aaaaaaaaaaaaaaaaaaaaa1": "Uydurma Sabah", "aaaaaaaaaaaaaaaaaaaaa2": "Ortak Ad",
-         "aaaaaaaaaaaaaaaaaaaaa3": "Sozsuz Parca", "aaaaaaaaaaaaaaaaaaaaa4": "Cancion Inventada"}
+         "aaaaaaaaaaaaaaaaaaaaa3": "Sozsuz Parca", "aaaaaaaaaaaaaaaaaaaaa4": "Cancion Inventada",
+         "aaaaaaaaaaaaaaaaaaaaa5": "Remasterli Gece - Remastered 2009"}  # Spotify başlığında ek var; LRCLIB'de eksiz kayıtlı
 
 LRC_SABAH = ("[00:01.00] ♪\n[00:05.20] I walk to the station every morning\n[00:09.80] the weather was beautiful\n\n"
              "[00:14.00] ...\n[00:18.50] we sing about the sunrise\n[00:23.00] and nobody is late today\n")
@@ -93,6 +94,10 @@ LRC_ORTAK_1 = "[00:02.00] ♪\n[00:06.00] Paper boats drift along the river\n[00
 LRC_ORTAK_2 = "[00:03.00] Silver trains cross the valley\n[00:08.50] we wave from the open door\n"
 LRC_ES = ("[00:02.00] ♪\n[00:06.00] voy a la estación cada mañana\n[00:10.50] la ciudad está tranquila esta noche\n"
           "[00:15.00] mi casa es muy grande\n[00:19.50] todos los días vamos al mar\n")
+
+
+LRC_GECE = ("[00:03.00] ♪\n[00:07.00] the lamps are quiet tonight\n[00:12.50] we leave the window open\n"
+            "[00:18.00] and the river sings along\n")
 
 
 def lrclib_entry(entry_id, track, artist, duration, synced="", plain="", instrumental=False):
@@ -107,6 +112,7 @@ LYRICS = [
     lrclib_entry(9012, "Ortak Ad", "Ikinci Sanatci", 199.0, LRC_ORTAK_2, "Silver trains cross the valley"),
     lrclib_entry(9021, "Sozsuz Parca", "Duz Sanatci", 150.0, plain="Only plain words here"),
     lrclib_entry(9022, "Sozsuz Parca", "Enstruman Sanatci", 150.0, instrumental=True),
+    lrclib_entry(9041, "Remasterli Gece", "Eski Sanatci", 190.0, LRC_GECE, "the lamps are quiet tonight"),
     lrclib_entry(9031, "Cancion Inventada", "Artista Falso", 180.0, LRC_ES, "voy a la estación cada mañana"),
 ]
 

@@ -4,6 +4,7 @@ Spotify'ın kendi API'si anahtar ister; oEmbed anahtarsızdır ve yalnızca şar
 Sözler LRCLIB'den gelir (anahtarsız, açık servis). Hata olursa SongError (mesaj + HTTP kodu).
 """
 
+import http.client
 import json
 import re
 import types
@@ -115,7 +116,7 @@ def request_json(url, timeout, unreachable, not_found=None):
         if error.code == 404 and not_found:
             raise SongError(not_found, 404) from error
         raise SongError(unreachable, 502) from error
-    except (urllib.error.URLError, OSError, ValueError) as error:
+    except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError) as error:
         raise SongError(unreachable, 502) from error
 
 
@@ -145,9 +146,25 @@ def candidate_of(entry):
     }
 
 
-def find_lyrics(title):
-    """LRCLIB'de şarkı adıyla arar; yalnızca senkronlu sözü olanlar (en çok 8, tekrarlar tek)."""
-    data = request_json(f"https://lrclib.net/api/search?track_name={quote(title, safe='')}", 10, LYRICS_DOWN)
+TITLE_DASH_SUFFIX = re.compile(r"\s+-\s+(?:(?!\s-\s).)*$")  # " - Remastered 2009", " - Live", " - Radio Edit"
+TITLE_BRACKET_SUFFIX = re.compile(r"\s*(?:\((?:feat\.?|with)\s[^()]*\)|\[[^\[\]]*\])\s*$", re.IGNORECASE)  # (feat. X), (with X), [..]
+
+
+def strip_title_suffix(title):
+    """Spotify başlığındaki sondaki ekleri atar (' - Remastered 2009', '(feat. X)', '(with X)', '[...]').
+    Sonuç boş kalacaksa başlık aynen döner."""
+    stripped = title.strip()
+    while True:
+        shorter = TITLE_BRACKET_SUFFIX.sub("", TITLE_DASH_SUFFIX.sub("", stripped)).strip()
+        if shorter == stripped or not shorter:
+            break
+        stripped = shorter
+    return stripped or title.strip()
+
+
+def search_lyrics(name):
+    """LRCLIB'de ada göre arar; yalnızca senkronlu sözü olanlar (en çok 8, tekrarlar tek)."""
+    data = request_json(f"https://lrclib.net/api/search?track_name={quote(name, safe='')}", 10, LYRICS_DOWN)
     if not isinstance(data, list):
         raise SongError(LYRICS_DOWN, 502)
     result, seen = [], set()
@@ -168,9 +185,20 @@ def find_lyrics(title):
     return result
 
 
+def find_lyrics(title):
+    """LRCLIB'de şarkı adıyla arar. Hiç uygun aday çıkmazsa ve başlıkta sondaki ek varsa (' - Remastered 2009',
+    '(feat. X)') ek atılıp bir kez daha aranır."""
+    result = search_lyrics(title)
+    if not result:
+        stripped = strip_title_suffix(title)
+        if stripped != title.strip():
+            result = search_lyrics(stripped)
+    return result
+
+
 def fetch_lyrics(lrclib_id):
     """Tek LRCLIB kaydı (aday biçiminde). Yoksa ya da senkronlu söz yoksa SongError 404."""
-    missing = "Bu sürüm için senkronlu söz bulunamadı."
+    missing = "Bu sürüm için zaman damgalı söz bulunamadı."
     data = request_json(f"https://lrclib.net/api/get/{int(lrclib_id)}", 10, LYRICS_DOWN, missing)
     if not isinstance(data, dict):
         raise SongError(LYRICS_DOWN, 502)

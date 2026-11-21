@@ -16,6 +16,7 @@ let songParked = null;      // söz seçimi beklenirken önceki şarkının oyna
 let songData = null;        // açık şarkının yanıtı (başlık, kapak, lrclibId)
 let songLink = "";          // açık şarkının linki ("Başka söz seç" için)
 let songLinkedStart = 0;    // video.html?v=sp:<id>&t=<sn> ile gelindiyse şarkının bekleyeceği saniye
+let songLinkedTrack = "";   // o adresteki şarkının Spotify kimliği (başka şarkı açılırsa songLinkedStart atılır)
 const SONG_PREVIEW_MAX = 35;  // oynatıcının bildirdiği süre bundan kısaysa girişsiz önizleme sayılır (sn)
 const SONG_PREVIEW_NOTE = "Tam şarkı ve satır takibi için tarayıcıda Spotify'a giriş yap; şu an 30 saniyelik önizleme çalıyor.";
 const SONG_NO_PLAYER_NOTE = "Spotify oynatıcısı yüklenemedi; sözler, kelimeler ve dikte metni yine çalışır. Sözler: LRCLIB";
@@ -130,8 +131,8 @@ function startPlayerTimers() {
 
 async function showVideo(videoId) {
     await youtubeReady;
-    if (songMode) {
-        return;  // beklerken bir şarkı açıldı
+    if (songMode || songPending) {
+        return;  // beklerken bir şarkı açıldı ya da açılıyor
     }
     showPlayerKind("youtube");
 
@@ -1545,6 +1546,12 @@ function applySong(data, url, fresh) {
         if (songSynced && fresh !== null) {
             fresh.seekTo(songLinkedStart);  // kayıtlı kelimeden gelindi: o saniyede bekler
         }
+        if (lines.length) {
+            // Oynatma başlamadan cümle kartı o saniyedeki cümlede dursun (yoksa ilk satırda kalır)
+            shadowCurrent = lineIndexAt(songLinkedStart);
+            highlight(shadowCurrent);
+            renderShadowCard();
+        }
         songLinkedStart = 0;
     }
 }
@@ -1554,6 +1561,9 @@ async function loadSong(url, lyricsId) {
     let request = ++transcriptRequest;
     let button = document.getElementById("videoButton");
     let trackId = typeof spotifyTrackId === "function" ? spotifyTrackId(url) : null;
+    if (trackId !== songLinkedTrack) {
+        songLinkedStart = 0;  // adresteki saniye yalnızca adresteki şarkı için geçerli
+    }
     hideSongChoices();
     if (!trackId) {
         setStatus("Yalnızca tek bir şarkının linkini yapıştır.", "error");
@@ -1601,7 +1611,8 @@ async function loadSong(url, lyricsId) {
             query += `&lyrics=${encodeURIComponent(lyricsId)}`;
         } else {
             // Süre, sözlerin kendiliğinden seçilmesine yardım eder; önizlemede (≈30 sn) gönderilmez
-            let length = fresh !== null ? await fresh.waitDuration(3000) : 0;
+            // Gömülü oynatıcı ilk oynatmadan önce süre göndermez: başlamamışsa beklemeden bilinen süre (yoksa 0) kullanılır
+            let length = fresh === null ? 0 : (fresh.started ? await fresh.waitDuration(3000) : fresh.length);
             if (request !== transcriptRequest) {
                 if (fresh !== null && fresh !== songPlayer) fresh.destroy();
                 return;
@@ -1635,6 +1646,7 @@ async function loadSong(url, lyricsId) {
         if (request !== transcriptRequest) {
             return;
         }
+        songLinkedStart = 0;
         if (!reused) {
             // Yeni oynatıcı kapanır, önceki görünüm geri gelir
             if (fresh !== null && fresh !== songPlayer) {
@@ -1718,6 +1730,7 @@ let linkedStart = 0;
         loadTranscript(url);
     } else if (/^sp:[A-Za-z0-9]{22}$/.test(linkedVideo)) {
         songLinkedStart = Math.max(0, Math.floor(Number(params.get("t")) || 0));
+        songLinkedTrack = linkedVideo.slice(3);
         let url = `https://open.spotify.com/track/${linkedVideo.slice(3)}`;
         document.getElementById("videoUrl").value = url;
         loadSong(url);

@@ -165,7 +165,7 @@ Anahtar olmadan da transkript, dikte, kelimeler, kartlar ve sözlük çalışır
 Ek paket gerekmez (Python'un `unittest`'i):
 
 ```bash
-python -m unittest discover -s tests -v   # 54 entegrasyon testi, ~4 sn, internetsiz
+python -m unittest discover -s tests -v   # 62 entegrasyon testi, ~4 sn, internetsiz
 python -m tests.canli_kontrol             # isteğe bağlı: gerçek YouTube, çeviri, Wiktionary, Spotify oEmbed ve LRCLIB'e birkaç istek
 ```
 

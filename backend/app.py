@@ -130,7 +130,10 @@ NOT_A_LINK = "Bu geçerli bir YouTube ya da Spotify şarkı linki değil."
 
 def source_id(url):
     """Linkten kaynak kimliği: YouTube video id'si ya da Spotify şarkısı için sp:<id>; tanınmazsa None."""
-    video_id = extract_video_id(url)
+    try:
+        video_id = extract_video_id(url)
+    except ValueError:  # "https://[" gibi ayrıştırılamayan metin: link değil sayılır (400)
+        video_id = None
     if video_id:
         return video_id
     track_id = songs.extract_track_id(url)
