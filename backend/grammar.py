@@ -94,7 +94,35 @@ Rules:
 Transcript:
 """
 
-PROMPTS = {"en": PROMPT, "es": PROMPT_ES}
+PROMPT_DE = """You are a German grammar teacher for Turkish-speaking learners (around B1 level).
+Below is a numbered transcript of a German video. It may be automatic captions without punctuation.
+Find the 5 to 8 most useful grammar points that actually occur in it.
+Prefer structures a learner can reuse (the Perfekt with haben or sein, the Präteritum of common verbs, modal verbs,
+separable verbs, verb position in subordinate clauses with weil, dass, wenn, ob, cases after prepositions,
+two-way prepositions, adjective endings, reflexive verbs, the passive, Konjunktiv II with würde / hätte / wäre,
+relative clauses, zu + infinitive, comparatives, etc.).
+Skip trivial points like articles on their own.
+
+Return ONLY a JSON object with this exact shape:
+{"topics": [{
+  "title": "German name of the grammar point",
+  "titleTr": "Turkish name",
+  "level": "one of A1, A2, B1, B2, C1, C2",
+  "pattern": "short formula, e.g. haben / sein + Partizip II",
+  "explanation": "2-3 sentences in Turkish: when and why it is used",
+  "tip": "one sentence in Turkish: a common mistake Turkish speakers make, or a memory aid",
+  "examples": [{"line": 12, "phrase": "exact words copied from that line that show the structure", "note": "short Turkish note about this example"}]
+}]}
+
+Rules:
+- "line" must be a line number from the transcript, and "phrase" must appear word for word in that line.
+- Give 2 to 4 examples per topic, from different lines when possible.
+- explanation, tip and note must be written in Turkish. title and pattern stay in German.
+
+Transcript:
+"""
+
+PROMPTS = {"en": PROMPT, "es": PROMPT_ES, "de": PROMPT_DE}
 
 
 def build_prompt(lines, lang="en"):

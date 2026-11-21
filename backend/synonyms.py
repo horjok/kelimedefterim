@@ -8,7 +8,7 @@ Yanıt: {"word", "senses": [{"pos", "tr", "synonyms": [{"word", "tr", "note", "e
         "unknown": bool, "model"}
 - Anlamlar kelimenin farklı anlamlarına göre gruplanır (book: rezervasyon yapmak / kitap).
 - Kelime başına Gemini bir kez çağrılır; sonuç dile göre saklanır: "synonyms.json", "es/synonyms.json"
-  ({kelime: kayıt}). Eş anlamlısı olmayan ya da tanınmayan kelimenin boş sonucu da saklanır.
+  ("de/synonyms.json"; {kelime: kayıt}, anahtar küçük harfli). Eş anlamlısı olmayan ya da tanınmayan kelimenin boş sonucu da saklanır.
 """
 
 import re
@@ -25,7 +25,8 @@ POS_NAMES = {"noun": "isim", "verb": "fiil", "adjective": "sıfat", "adverb": "z
              "preposition": "edat", "conjunction": "bağlaç", "pronoun": "zamir", "interjection": "ünlem",
              "phrase": "ifade", "expression": "ifade"}
 
-LANGUAGE_NAMES = {"en": "English", "es": "Spanish"}
+LANGUAGE_NAMES = {"en": "English", "es": "Spanish", "de": "German"}
+ARTICLES = ("der", "die", "das")
 
 SYSTEM = """You are an experienced {language} teacher and lexicographer who helps Turkish-speaking learners
 build vocabulary. You explain in clear, natural Turkish and address the learner as "sen".
@@ -35,6 +36,15 @@ You reply with a single JSON object in exactly the requested shape and nothing e
 SPANISH_EXTRA = """
 You teach the Spanish of Spain (castellano peninsular). When a synonym is mainly used in Latin America,
 say so in its note. You write Spanish with correct accents (á, é, í, ó, ú, ü, ñ)."""
+
+# Almanca (21 Kasım 2026): isimler büyük harfle; artikel ayrı "article" alanında gelir (kullanıcı seçimi: Gemini eklesin)
+GERMAN_EXTRA = """
+You teach standard German (Hochdeutsch) and write it with correct spelling (ä, ö, ü, ß). German nouns are always
+written with a capital letter. For every synonym that is a noun, add the field "article" with its definite article
+in the nominative singular (der, die or das); for all other synonyms "article" is an empty string. When a synonym
+is mainly used in Austria or Switzerland, say so in its note. Each synonym object therefore has the shape
+{"word": "", "article": "", "tr": "", "note": "", "example": "", "exampleTr": ""}."""
+EXTRAS = {"es": SPANISH_EXTRA, "de": GERMAN_EXTRA}
 
 PROMPT = """List the most useful synonyms of the {language} word or phrase "{word}" for a Turkish-speaking learner.
 
@@ -74,25 +84,31 @@ def cache_for(lang):
         return caches[lang]
 
 
-def normalize(word):
-    return re.sub(r"\s+", " ", (word or "").strip().lower().replace("’", "'"))[:60]
+def normalize(word, lang="en"):
+    """Boşlukları sadeleştirir. Almancada büyük harf korunur (isimler: Tisch); önbellek anahtarı yine küçük harflidir."""
+    text = re.sub(r"\s+", " ", (word or "").strip().replace("’", "'"))[:60]
+    return text if lang == "de" else text.lower()
 
 
-def clean_synonym(raw, head, seen):
+def clean_synonym(raw, head, seen, lang="en"):
     if not isinstance(raw, dict):
         return None
-    word = normalize(as_text(raw.get("word"), 60))
-    if not WORD.fullmatch(word) or word == head or word in seen:
+    word = normalize(as_text(raw.get("word"), 60), lang)
+    if not WORD.fullmatch(word) or word.lower() == head.lower() or word.lower() in seen:
         return None
-    seen.add(word)
+    seen.add(word.lower())
     example = as_text(raw.get("example"), 240)
-    return {
+    result = {
         "word": word,
         "tr": as_text(raw.get("tr"), 80),
         "note": as_text(raw.get("note"), 240),
         "example": example,
         "exampleTr": as_text(raw.get("exampleTr"), 240) if example else "",
     }
+    article = as_text(raw.get("article"), 3).lower()
+    if lang == "de" and article in ARTICLES and word[:1].isupper():
+        result["article"] = article
+    return result
 
 
 def clean_senses(raw, head, lang="en"):
@@ -103,7 +119,7 @@ def clean_senses(raw, head, lang="en"):
     for item in (items if isinstance(items, list) else [])[:MAX_SENSES]:
         if not isinstance(item, dict) or not isinstance(item.get("synonyms"), list):
             continue
-        synonyms = [s for s in (clean_synonym(entry, head, seen) for entry in item["synonyms"]) if s][:MAX_SYNONYMS]
+        synonyms = [s for s in (clean_synonym(entry, head, seen, lang) for entry in item["synonyms"]) if s][:MAX_SYNONYMS]
         if synonyms:
             pos = turkish_pos(as_text(item.get("pos"), 30))
             senses.append({"pos": pos, "tr": as_text(item.get("tr"), 80), "synonyms": synonyms})
@@ -124,7 +140,8 @@ def with_turkish_pos(record):
 
 
 def get_synonyms(raw_word, lang="en"):
-    word = normalize(raw_word)
+    word = normalize(raw_word, lang)
+    key = word.lower()
     language = LANGUAGE_NAMES.get(lang)
     if not language:
         raise GeminiError("Bu dilde eş anlamlılar henüz yok.", 404, "no_feature")
@@ -132,17 +149,17 @@ def get_synonyms(raw_word, lang="en"):
         raise GeminiError(f"Tek bir {languages.info(lang)['name']} kelime ya da kısa bir ifade yaz.", 400, "bad_request")
 
     cache = cache_for(lang)
-    saved = cache.get(word)
+    saved = cache.get(key)
     if isinstance(saved, dict):
         return {"word": word, **with_turkish_pos(saved)}
 
-    system = SYSTEM.format(language=language, extra=SPANISH_EXTRA if lang == "es" else "")
+    system = SYSTEM.format(language=language, extra=EXTRAS.get(lang, ""))
     prompt = PROMPT.format(language=language, word=word, senses=MAX_SENSES, synonyms=MAX_SYNONYMS)
     data, model = generate_json(prompt, temperature=0.2, system=system)
     senses = clean_senses(data, word, lang)
     record = {"senses": senses, "unknown": bool(isinstance(data, dict) and data.get("unknown")) and not senses,
               "model": model, "at": int(time.time())}
     with cache_lock:
-        cache[word] = record
+        cache[key] = record
         storage.merge_write(storage_name(lang), cache)
     return {"word": word, **record}

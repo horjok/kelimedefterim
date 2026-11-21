@@ -23,12 +23,13 @@ from urllib.error import HTTPError
 
 from flask import Flask, Response, abort, g, jsonify, request, send_from_directory
 
-from . import ielts, languages, lessons, spanish, synonyms, wordbank
+from . import ielts, languages, lessons, synonyms, wordbank
 from .config import APP_PASSWORD, APP_PUBLIC, ON_VERCEL, WEB_DIR
 from .gemini import GeminiError
 from .grammar import GrammarError, analyze_grammar
 from .ipa import prepare_ipa, token_to_ipa
 from .transcripts import (
+    PACKS,
     TranscriptError,
     clean,
     extract_video_id,
@@ -146,8 +147,9 @@ def vocabulary():
     except TranscriptError as exc:
         return error(exc.message, exc.status)
 
-    if g.lang == "es":
-        data = spanish.build_vocab(lines, lambda texts: translate_all(texts, "es"), translations_for("es"))
+    if g.lang in PACKS:
+        lang = g.lang
+        data = PACKS[lang].build_vocab(lines, lambda texts: translate_all(texts, lang), translations_for(lang))
     else:
         data = build_vocab(lines, token_to_ipa, prepare_ipa)
     if data["translationError"] is None:  # eksik çeviriyle önbelleğe alma, sonra tekrar denensin

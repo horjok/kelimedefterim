@@ -252,7 +252,7 @@ function renderStudy() {
     if (label) {
         meta.append(savedElement("span", "chip", label));
     }
-    card.append(meta, savedElement("p", "study-word", entry.word));
+    card.append(meta, savedElement("p", "study-word", savedHead(entry)));
     if (entry.ipa) {
         card.appendChild(savedElement("p", "study-ipa", `/${entry.ipa}/`));
     }
@@ -372,7 +372,7 @@ function renderSavedCards() {
     for (let entry of cards) {
         let row = savedElement("li", "saved-row");
         let text = savedElement("span", "saved-text");
-        text.append(savedElement("span", "saved-word", entry.word), ` = ${entry.tr || "—"}`);
+        text.append(savedElement("span", "saved-word", savedHead(entry)), ` = ${entry.tr || "—"}`);
         row.append(text, savedStatusChip(entry), savedElement("span", "saved-due", savedDueText(entry, now)));
 
         let remove = savedElement("button", "mini danger", "Karttan çıkar");
@@ -451,7 +451,7 @@ function wordRowHtml(entry) {
     let row = savedElement("li", "saved-row");
 
     let text = savedElement("span", "saved-text");
-    text.appendChild(savedElement("span", "saved-word", entry.word));
+    text.appendChild(savedElement("span", "saved-word", savedHead(entry)));
     if (entry.ipa) {
         text.append(" ", savedElement("span", "saved-ipa", `/${entry.ipa}/`));
     }
@@ -576,7 +576,7 @@ if (document.getElementById("savedList")) {
         let textInput = document.getElementById("addWordText");
         let meaningInput = document.getElementById("addWordMeaning");
         let result = document.getElementById("wordAddResult");
-        let text = textInput.value.trim().toLowerCase();
+        let text = langWordCase(textInput.value.trim());  // Almanca isim büyük harfle kalır
         let meaning = meaningInput.value.trim();
         let key = savedKey("word", text);
 
@@ -644,7 +644,7 @@ function renderSavedVideos() {
         let words = savedElement("div", "saved-video-words");
         for (let entry of entries) {
             // Videolu kelime bağlantıdır; elle eklenenin gidecek yeri yoktur
-            let item = savedElement(entry.videoId ? "a" : "span", "", entry.word);
+            let item = savedElement(entry.videoId ? "a" : "span", "", savedHead(entry));
             if (entry.videoId) {
                 item.href = savedVideoLink(entry);
             }
@@ -681,7 +681,7 @@ function renderTodayHero(all, now) {
         text.textContent = `${reviewCount} tekrar, ${newCount} yeni kart. Sıradaki kelime sağda.`;
         action.textContent = "Çalışmaya başla";
         action.href = "kartlar.html";
-        display.textContent = due[0].word;
+        display.textContent = savedHead(due[0]);
     } else if (cards.length > 0) {
         let waiting = cards.filter((entry) => entry.due > now).sort((a, b) => a.due - b.due);
         title.textContent = "Bugünlük tekrar bitti";
@@ -717,7 +717,7 @@ function renderTodayWord(all) {
     let dayNumber = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / SAVED_DAY);
     let entry = pool[dayNumber % pool.length];
 
-    box.appendChild(savedElement("p", "wod-word", entry.word));
+    box.appendChild(savedElement("p", "wod-word", savedHead(entry)));
     if (entry.ipa) {
         box.appendChild(savedElement("p", "study-ipa", `/${entry.ipa}/`));
     }

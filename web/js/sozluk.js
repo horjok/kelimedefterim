@@ -48,6 +48,20 @@ const DICT_SOURCES = {
         youglish: "spanish",
         scenes: false,
     },
+    // Almanca (21 Kasım 2026): tanımlar yine Wiktionary'den; bağlantılar DWDS ve Cambridge Almanca–İngilizce
+    de: {
+        hint: "Almanca bir kelime ara: Türkçe anlamı, okunuşu, heceleri ve Wiktionary tanımları burada; DWDS ve Cambridge tek tıkla. İsimleri büyük harfle yaz (Tisch).",
+        placeholder: "ör. Bahnhof, sprechen",
+        linksLabel: "Sözlüklerde aç",
+        links: [
+            { label: "DWDS (Almanca tanım) ↗", url: (word) => "https://www.dwds.de/wb/" + encodeURIComponent(word) },
+            { label: "Almanca–İngilizce ↗", url: (word) => dictCambridgeUrl("german-english", word) },
+        ],
+        short: "DWDS",
+        source: "Tanımlar: Wiktionary (CC BY-SA), İngilizce açıklamalı. Okunuş kurallarla üretilir (standart Almanca, yaklaşık). DWDS ve Cambridge'in içeriği yalnızca kendi sitelerinde görüntülenir.",
+        youglish: "german",
+        scenes: false,
+    },
 };
 const DICT_SOURCE = DICT_SOURCES[currentLang()] || DICT_SOURCES.en;
 const DICT_HISTORY_KEY = "dictHistory";
@@ -114,7 +128,7 @@ function dictSetStatus(text, className) {
 }
 
 function dictSearch(rawWord) {
-    let word = rawWord.trim().toLowerCase().replace(/\s+/g, " ");
+    let word = langWordCase(rawWord.trim()).replace(/\s+/g, " ");  // Almancada büyük harf korunur (Tisch)
     if (word === "") {
         return;
     }
@@ -218,7 +232,15 @@ function dictSearchWiktionary(word, request) {
                 return { partOfSpeech: entry.partOfSpeech || "", definitions: definitions };
             }).filter((meaning) => meaning.definitions.length > 0);
             if (meanings.length === 0) {
-                dictSetStatus(`"${word}" Wiktionary'de bulunamadı. Yazımı (á, é, ñ) kontrol et ya da ${DICT_SOURCE.short}'de aç.`, "error");
+                // Almanca isim küçük harfle yazıldıysa (tisch) arama büyük harfle baştan yapılır (Tisch):
+                // başlık, çeviri, heceler ve kayıt anahtarı da doğru yazımı alır. Büyük harfle de yoksa hata gösterilir.
+                let capital = word.charAt(0).toUpperCase() + word.slice(1);
+                if (code === "de" && capital !== word) {
+                    dictSearch(capital);
+                    return;
+                }
+                let letters = code === "de" ? "ä, ö, ü, ß" : "á, é, ñ";
+                dictSetStatus(`"${word}" Wiktionary'de bulunamadı. Yazımı (${letters}) kontrol et ya da ${DICT_SOURCE.short}'de aç.`, "error");
                 return;
             }
             dictRender([{ phonetics: [], meanings: meanings }]);
@@ -245,8 +267,13 @@ function dictTranslate(word, request) {
             }
             trInput.placeholder = "Anlamı yaz";
             // Kullanıcı bu arada kendi yazdıysa üstüne yazma
-            if (data.tr && trInput.value.trim() === "" && data.tr.toLowerCase() !== word) {
-                trInput.value = data.tr;
+            if (data.tr && trInput.value.trim() === "" && data.tr.toLowerCase() !== word.toLowerCase()) {
+                // Almanca isimlerin çevirisi büyük harfle gelir (Masa); kısaltma değilse küçültülür
+                let tr = data.tr;
+                if (currentLang() === "de" && /^\p{Lu}\p{Ll}/u.test(tr)) {
+                    tr = tr.charAt(0).toLocaleLowerCase("tr") + tr.slice(1);
+                }
+                trInput.value = tr;
             }
         })
         .catch(function () {

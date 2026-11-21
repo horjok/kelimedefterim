@@ -29,7 +29,7 @@ from youtube_transcript_api import (
 )
 from youtube_transcript_api.proxies import GenericProxyConfig, WebshareProxyConfig
 
-from . import ipa, languages, spanish, storage
+from . import german, ipa, languages, spanish, storage
 from .config import ON_VERCEL
 from .ipa import WORD
 
@@ -37,11 +37,12 @@ log = logging.getLogger("kelime-defteri")
 
 
 
+PACKS = {"es": spanish, "de": german}  # İngilizce dışındaki dil paketleri (aynı arayüz: WORD, word_to_ipa, build_vocab...)
+
+
 def pack(lang):
     """Dile özgü telaffuz ve kelime araçları: WORD deseni, prepare_ipa, token_to_ipa, word_to_ipa, syllables."""
-    if lang == "es":
-        return spanish
-    return ipa
+    return PACKS.get(lang, ipa)
 
 
 def proxy_config():
@@ -263,8 +264,8 @@ def find_occurrences(query, lang="en"):
     if not parts:
         return None
     cache = cache_for(lang)
-    if lang == "es":
-        first_forms = spanish.word_forms(parts[0], (line["text"] for data in list(cache.values()) for line in data["lines"]))
+    if lang in PACKS:
+        first_forms = PACKS[lang].word_forms(parts[0], (line["text"] for data in list(cache.values()) for line in data["lines"]))
     else:
         first_forms = word_forms(parts[0])
     rest = parts[1:]

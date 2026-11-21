@@ -42,7 +42,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from wordfreq import top_n_list, zipf_frequency
 
-from . import languages, spanish, storage
+from . import german, languages, spanish, storage
 from .config import CACHE_DIR, WEB_DIR
 from .gemini import GeminiError, as_text, generate_json   # Gemini yalnızca hazır kayıtları denetler (review_words)
 from .ipa import word_to_ipa
@@ -66,35 +66,53 @@ SPANISH_BLOCKED = {
     "lesbiana", "concha", "pinche", "carajo", "zorra", "idiota", "estúpido",
 }
 SPANISH_POS = {"fiil": "VERB", "zarf": "ADV"}  # spanish.pos_of → vocab.POS_NAMES etiketi
+# Almanca (21 Kasım 2026): isimler büyük harfle yazılır ve öyle saklanır (Tisch); karşılaştırmalar küçük harfle.
+GERMAN_WORD = re.compile(r"^[A-Za-zÄÖÜäöüß][a-zäöüß]+$")
+GERMAN_BLOCKED = {
+    "scheiße", "scheisse", "ficken", "arsch", "arschloch", "fotze", "hure", "schwanz", "wichser", "schlampe", "nazi",
+    "porno", "sex", "sexy", "nackt", "vergewaltigung", "idiot", "verdammt", "schwul", "lesbe", "titten", "kacke",
+    "pisse", "mist", "depp", "trottel", "kotzen", "scheissen", "scheißen", "kacken", "geil",
+}
+GERMAN_POS = {"fiil": "VERB", "zarf": "ADV", "isim": "NOUN", "sıfat": "ADJ"}  # german.pos_of → POS_NAMES etiketi
+# İngilizce dışındaki diller: dil paketi, kelime deseni, engelli kelimeler, tür eşlemesi
+FOREIGN = {
+    "es": {"pack": spanish, "word": SPANISH_WORD, "blocked": SPANISH_BLOCKED, "pos": SPANISH_POS},
+    "de": {"pack": german, "word": GERMAN_WORD, "blocked": GERMAN_BLOCKED, "pos": GERMAN_POS},
+}
 bank_lock = threading.Lock()
 candidate_cache = None   # {"A1": [kelime, ...], ...}; ilk istekte bir kez hesaplanır
-spanish_cache = None     # İspanyolca adaylar, aynı biçim
+foreign_cache = {}       # dil -> İngilizce dışındaki dillerin adayları, aynı biçim
 bank_cache = {}          # seviye (İngilizce) ya da (dil, seviye) -> {kelime: kayıt}
 
 
-def spanish_candidates():
-    """İspanyolca adaylar: sıklık sırasındaki yalın hâller, seviyesine göre (sık kullanılandan seyreğe)."""
-    global spanish_cache
-    if spanish_cache is None:
-        rank = spanish.ranks()
+def foreign_candidates(lang):
+    """İspanyolca/Almanca adaylar: sıklık sırasındaki yalın hâller, seviyesine göre (sık kullanılandan seyreğe).
+    Almanca isimler büyük harfle döner (simplemma'nın yazımı: Tisch)."""
+    if lang not in foreign_cache:
+        conf = FOREIGN[lang]
+        pack = conf["pack"]
+        rank = pack.ranks()
         result = {level: [] for level in LEVELS}
-        for lemma in sorted(rank, key=rank.get):
-            if (len(lemma) < MIN_LENGTH or not SPANISH_WORD.match(lemma) or lemma in SPANISH_BLOCKED
-                    or lemma.endswith("rse") or spanish.is_basic(lemma) or spanish.lemma_of(lemma) != lemma
-                    or not spanish.simplemma.is_known(lemma, lang=spanish.LANG)):
+        for key in sorted(rank, key=rank.get):
+            lemma = pack.headword(key) if lang == "de" else pack.lemma_of(key)
+            same = (lambda text: pack.fold(text) == key) if lang == "de" else (lambda text: text.lower() == key)
+            if (lemma is None or len(key) < MIN_LENGTH or not conf["word"].match(lemma) or key in conf["blocked"]
+                    or (lang == "de" and not re.search(r"[aeiouyäöü]", key))  # bzw, usw
+                    or (lang == "es" and key.endswith("rse")) or pack.is_basic(lemma) or not same(lemma)
+                    or not pack.simplemma.is_known(lemma, lang=pack.LANG)):
                 continue
-            if zipf_frequency(lemma, "en") > zipf_frequency(lemma, "es") + 1:
-                continue  # İspanyolca metinlerde geçen İngilizce kelime ("the")
-            result[spanish.level_of(lemma)].append((lemma, SPANISH_POS.get(spanish.pos_of(lemma, lemma))))
-        spanish_cache = result
-    return spanish_cache
+            if zipf_frequency(key, "en") > zipf_frequency(key, lang) + 1:
+                continue  # bu dildeki metinlerde geçen İngilizce kelime ("the")
+            result[pack.level_of(lemma)].append((lemma, conf["pos"].get(pack.pos_of(lemma, lemma))))
+        foreign_cache[lang] = result
+    return foreign_cache[lang]
 
 
 def candidates(lang="en"):
     """Seviyelere göre aday kelimeler (sık kullanılandan seyreğe). İlk çağrıda hesaplanır, bellekte kalır."""
     global candidate_cache
     if lang != "en":
-        return spanish_candidates()
+        return foreign_candidates(lang)
     if candidate_cache is None:
         result = {level: [] for level in LEVELS}
         for word in top_n_list("en", CANDIDATE_POOL):
@@ -111,7 +129,7 @@ def candidates(lang="en"):
     return candidate_cache
 
 
-TOPIC_FILES = {"en": "kelime-konulari.json", "es": "kelime-konulari-es.json"}
+TOPIC_FILES = {"en": "kelime-konulari.json", "es": "kelime-konulari-es.json", "de": "kelime-konulari-de.json"}
 
 
 def load_topics(lang="en"):
@@ -129,8 +147,9 @@ def topic_words(topic, level, lang="en"):
     if entry is None:
         raise GeminiError("Böyle bir kelime konusu yok.", 400, "bad_request")
     if lang != "en":
-        return [(word, SPANISH_POS.get(spanish.pos_of(word, word))) for word in entry.get("words", {}).get(level, [])
-                if isinstance(word, str) and SPANISH_WORD.match(word) and word not in SPANISH_BLOCKED]
+        conf = FOREIGN[lang]
+        return [(word, conf["pos"].get(conf["pack"].pos_of(word, word))) for word in entry.get("words", {}).get(level, [])
+                if isinstance(word, str) and conf["word"].match(word) and word.lower() not in conf["blocked"]]
     result = []
     for word in entry.get("words", {}).get(level, []):
         if isinstance(word, str) and WORD_ONLY.match(word) and word not in BLOCKED:
@@ -225,10 +244,11 @@ def plain_text(markup):
     return " ".join(html.unescape(re.sub(r"<[^>]+>", "", str(markup or ""))).split())
 
 
-def fetch_example_es(entry):
-    """Wiktionary'den (İngilizce Vikisözlük, İspanyolca bölümü) kelimenin örnek cümlesi; kurallar fetch_example ile aynı.
+def fetch_example_es(entry, lang="es"):
+    """Wiktionary'den (İngilizce Vikisözlük, dilin bölümü: es, de) kelimenin örnek cümlesi; kurallar fetch_example ile aynı.
     Uygun örnek yoksa "", istek başarısız olduysa None."""
     word, pos = entry
+    blocked = FOREIGN[lang]["blocked"]
     try:
         request = urllib.request.Request(WIKTIONARY_URL + urllib.parse.quote(word), headers={
             "User-Agent": "kelime-defteri/1.0 (yerel dil ogrenme uygulamasi)", "Accept": "application/json"})
@@ -239,7 +259,7 @@ def fetch_example_es(entry):
     except Exception:
         return None
     found = ""
-    for item in (data.get("es") if isinstance(data, dict) else None) or []:
+    for item in (data.get(lang) if isinstance(data, dict) else None) or []:
         if not isinstance(item, dict):
             continue
         for definition in item.get("definitions") or []:
@@ -251,7 +271,7 @@ def fetch_example_es(entry):
                 example = as_text(example, 200)
                 if not 4 <= len(example.split()) <= 20:
                     continue
-                if re.search(r"\d{4}|[\"“”«»()\[\]]", example) or SPANISH_BLOCKED & set(re.findall(r"\w+", example.lower())):
+                if re.search(r"\d{4}|[\"“”«»„()\[\]]", example) or blocked & set(re.findall(r"\w+", example.lower())):
                     continue
                 if len(re.findall(rf"(?<!\w){re.escape(word)}(?!\w)", example, flags=re.IGNORECASE)) != 1:
                     continue
@@ -262,7 +282,8 @@ def fetch_example_es(entry):
     return found
 
 
-EXAMPLE_FETCHERS = {"en": lambda entry: fetch_example(entry), "es": fetch_example_es}
+EXAMPLE_FETCHERS = {"en": lambda entry: fetch_example(entry), "es": fetch_example_es,
+                    "de": lambda entry: fetch_example_es(entry, "de")}
 
 
 def translate_examples(sentences, lang="en"):
@@ -351,6 +372,33 @@ Rules:
 
 Entries (word | part of speech | Turkish meaning | example):
 {words}"""
+REVIEW_PROMPT_DE = """Your learner is building German vocabulary at CEFR level {level}.{topic} The entries below were prepared
+automatically: the Turkish meaning comes from machine translation of the single word (no context) and the example
+sentence from a dictionary (Wiktionary). Check and repair each entry.
+
+Return ONLY a JSON object with this exact shape:
+{{"words": [{{"word": "the word exactly as given", "drop": false, "pos": "noun | verb | adjective | adverb | other", "article": "der | die | das | empty", "tr": "Turkish meaning", "example": "German sentence", "exampleTr": "Turkish translation of the sentence"}}]}}
+
+Rules:
+- "drop": true if the word is a person's name, a place or brand name, vulgar, an English word, or not a real
+  German word (then the other fields may be empty). Otherwise false.
+- "article": for nouns the definite article of the singular in the nominative (der, die or das); for every other
+  part of speech an empty string. German nouns are written with a capital letter.
+- "tr": the most common, everyday meaning of the word{topic_rule}, in 1 to 3 Turkish words (verbs as infinitives
+  ending in -mek / -mak). If the given Turkish meaning is already right, return it unchanged. Replace it when it is wrong,
+  unnatural, a rare sense, or not a real Turkish word. No explanations, no alternatives separated by slashes.
+- "pos": the part of speech that matches your "tr".
+- "example": if the given example is a natural sentence that shows the word in the meaning of your "tr", return it
+  unchanged. Otherwise (or when it says NONE) write a new natural sentence of 6 to 14 words at {level} level in
+  standard German (Hochdeutsch) with correct spelling (ä, ö, ü, ß). Either way the sentence must contain the word
+  EXACTLY as given (same letters and capitalisation; verbs in the infinitive, for example after a modal verb or "zu";
+  nouns in the given singular form) exactly once.
+- "exampleTr": a natural, correct Turkish translation of the sentence you return.
+
+Entries (word | part of speech | Turkish meaning | example):
+{words}"""
+REVIEW_PROMPTS = {"es": REVIEW_PROMPT_ES, "de": REVIEW_PROMPT_DE}
+ARTICLES = ("der", "die", "das")
 POS_FROM_MODEL = {"verb": "fiil", "noun": "isim", "adjective": "sıfat", "adverb": "zarf"}
 # Phrasal verb'lerde Türkçe anlam elle yazıldı (phrasal_verbs.py) ve değiştirilmez; model yalnızca örneği denetler.
 PHRASAL_PROMPT = """Your learner is studying common English phrasal verbs (around B1-B2 level). Each entry below has a
@@ -388,7 +436,7 @@ def review_words(level, words, topic="", lang="en"):
     listing = "\n".join(
         f"{word} | {bank[word].get('pos') or '?'} | {bank[word]['tr']} | {bank[word].get('example') or 'NONE'}" for word in pending)
     if lang != "en":
-        prompt = REVIEW_PROMPT_ES.format(
+        prompt = REVIEW_PROMPTS[lang].format(
             level=level, words=listing,
             topic=f' The words belong to the vocabulary topic "{topic}".' if topic else "",
             topic_rule=f' within the topic "{topic}"' if topic else "")
@@ -406,19 +454,30 @@ def review_words(level, words, topic="", lang="en"):
         return False  # anahtar yok, kota, ağ: kayıtlar denetlenmeden kalır, sonra yeniden denenir
     for word in pending:
         bank[word]["gap"] = bank[word].get("gap", 0) + 1
+    by_key = {word.lower(): word for word in pending}  # Almanca isimler büyük harfle saklanır; model küçük yazabilir
     for item in (raw.get("words") if isinstance(raw, dict) else None) or []:
         if not isinstance(item, dict):
             continue
-        word = " ".join(as_text(item.get("word"), 40).lower().split())
-        if word not in pending or bank[word].get("chk"):
+        word = by_key.get(" ".join(as_text(item.get("word"), 40).lower().split()))
+        if word is None or bank[word].get("chk"):
             continue
         entry = bank[word]
         if lang != "en" and item.get("drop") is True:
             entry.update({"drop": 1, "chk": 1})  # özel ad, marka, İngilizce ya da kaba kelime: gösterilmez
             entry.pop("gap", None)
             continue
+        model_pos = as_text(item.get("pos"), 12).lower()
+        if lang == "de" and model_pos in POS_FROM_MODEL and (model_pos == "noun") != word[:1].isupper():
+            # Sıklık listesi küçük harfli olduğundan yazım tahmin edildi; model türü başka diyorsa (Hart ↔ hart) gösterme
+            entry.update({"drop": 1, "chk": 1})
+            entry.pop("gap", None)
+            continue
+        if lang == "de" and word[:1].isupper():
+            article = as_text(item.get("article"), 3).lower()
+            if article in ARTICLES:
+                entry["art"] = article  # der / die / das (arayüzde "der Tisch")
         tr = "" if phrasal else as_text(item.get("tr"), 60)
-        if tr and tr.lower() != word and "/" not in tr:
+        if tr and tr.lower() != word.lower() and "/" not in tr:
             tr = tr[0].lower() + tr[1:]
             if tr != entry["tr"]:
                 entry["tr"] = tr
@@ -445,7 +504,7 @@ def fill_from_dictionary(level, exclude, pool, frequent=False, lang="en"):
     frequent: adaylar sıklık sırasındaysa (karışık mod) en sık 400 yeni kelimeden seçilir.
     Örneği bulunamayan kelime örneksiz eklenir (Cümle aşamasında Türkçe → İngilizce sorulur)."""
     bank = load_bank(level, lang)
-    fresh = [(word, pos) for word, pos in pool if word not in bank and word not in exclude]
+    fresh = [(word, pos) for word, pos in pool if word not in bank and word.lower() not in exclude]
     if not fresh:
         return 0
     if frequent:
@@ -459,7 +518,8 @@ def fill_from_dictionary(level, exclude, pool, frequent=False, lang="en"):
     elif english:
         error = translate_all([translation_query(word, pos) for word, pos in batch])
     else:
-        error = translate_all([word for word, _pos in batch], lang)  # İspanyolca mastar Türkçe mastar olarak döner
+        # İspanyolca mastar Türkçe mastar olarak döner; Almanca fiil "zu" ile sorulur (zu wohnen → yaşamak)
+        error = translate_all([foreign_query(word, pos, lang) for word, pos in batch], lang)
     with ThreadPoolExecutor(max_workers=DICT_WORKERS) as workers:
         examples = dict(zip((word for word, _pos in batch), workers.map(fetch, batch)))
     for word, pos in batch:  # başarısız istekler (None) bir kez de tek tek denenir
@@ -476,14 +536,14 @@ def fill_from_dictionary(level, exclude, pool, frequent=False, lang="en"):
         elif english:
             tr = meaning_of(word, pos)
         else:
-            tr = store.get(word, "")
-            tr = "" if tr.lower() == word else tr
+            tr = store.get(foreign_query(word, pos, lang), "")
+            tr = "" if tr.lower() == word.lower() else tr
         if not tr:
             continue  # çeviri gelmedi ya da kelime aynen döndü
         example = examples.get(word)
         bank[word] = {
             "tr": tr[0].lower() + tr[1:], "pos": "phrasal verb" if phrasal else POS_NAMES.get(pos, ""),
-            "ipa": phrase_ipa(word) if phrasal else word_to_ipa(word) if english else spanish.word_to_ipa(word),
+            "ipa": phrase_ipa(word) if phrasal else word_to_ipa(word) if english else FOREIGN[lang]["pack"].word_to_ipa(word),
             "example": example or "", "exampleTr": store.get("§" + example, "") if example else "",
             "zipf": round(zipf_frequency(word, lang), 2), "src": "sozluk",
         }
@@ -495,6 +555,10 @@ def fill_from_dictionary(level, exclude, pool, frequent=False, lang="en"):
     elif error:
         raise GeminiError(error, 503, "network")
     return added
+
+
+def foreign_query(word, pos, lang):
+    return f"zu {word}" if lang == "de" and pos == "VERB" else word
 
 
 def bank_key(level, lang):
@@ -533,7 +597,7 @@ def get_words(level, count, exclude=(), topic="", lang="en"):
 
         def usable():
             return [word for word in bank
-                    if word not in exclude and not bank[word].get("drop") and (wanted is None or word in wanted)]
+                    if word.lower() not in exclude and not bank[word].get("drop") and (wanted is None or word in wanted)]
 
         available = usable()
         error = None

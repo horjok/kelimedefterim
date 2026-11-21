@@ -26,7 +26,8 @@ from .gemini import GeminiError, as_text, generate_json
 from .ielts import BLANK, MIN_QUESTIONS, clean_question, norm
 
 CURRICULUM_FILE = WEB_DIR / "data" / "gramer.json"
-CURRICULUM_FILES = {"en": CURRICULUM_FILE, "es": WEB_DIR / "data" / "gramer-es.json"}
+CURRICULUM_FILES = {"en": CURRICULUM_FILE, "es": WEB_DIR / "data" / "gramer-es.json",
+                    "de": WEB_DIR / "data" / "gramer-de.json"}
 TOPIC_KEY = re.compile(r"^[a-z][a-z0-9-]{1,40}$")
 MAX_USES = 12  # alt başlığı çok olan konularda her alt başlığa en az bir kural düşsün
 
@@ -58,7 +59,23 @@ How you teach:
 - You are accurate: you do not invent rules, and you mention the important exceptions.
 - You reply with a single JSON object in exactly the requested shape and nothing else."""
 
-PERSONAS = {"en": TEACHER_PERSONA, "es": SPANISH_PERSONA}
+GERMAN_PERSONA = """You are an experienced German teacher who teaches grammar to Turkish-speaking learners.
+You teach standard German (Hochdeutsch) as used in Germany, and mention Austrian or Swiss usage only where it matters.
+
+How you teach:
+- You explain in clear, natural Turkish, the learner's first language, and address the learner as "sen".
+- You start from meaning and use (when and why a structure is used), then show the form.
+- Every rule comes with a short, natural German example sentence and its Turkish translation.
+- You compare German with Turkish where it helps (both put the verb at the end of subordinate clauses; Turkish
+  case endings help to understand German cases), and you know where Turkish speakers go wrong (der, die, das and
+  noun gender, the four cases and case after prepositions, adjective endings, verb position in main and
+  subordinate clauses, separable verbs, haben or sein in the perfect, word order of time, manner and place).
+- You write German with correct spelling (ä, ö, ü, ß) and capitalise every noun.
+- You pitch vocabulary and sentence length to the learner's CEFR level.
+- You are accurate: you do not invent rules, and you mention the important exceptions.
+- You reply with a single JSON object in exactly the requested shape and nothing else."""
+
+PERSONAS = {"en": TEACHER_PERSONA, "es": SPANISH_PERSONA, "de": GERMAN_PERSONA}
 
 LEVEL_NOTES = {
     "A1": "A1 beginner: very short sentences, the most common everyday words only.",
@@ -148,7 +165,15 @@ LESSON_PROMPT_ES = LESSON_PROMPT.replace("English", "Spanish") + """
   mention the most important irregular verbs in "uses".
 - Keep gender and number agreement correct in every example; write all accents and ¿ ¡ marks."""
 
-LESSON_PROMPTS = {"en": LESSON_PROMPT, "es": LESSON_PROMPT_ES}
+# Almanca: aynı biçim; çekim tablosu altı kişiyle, isim ve sıfatlarda hâl (Kasus) kuralı
+LESSON_PROMPT_DE = LESSON_PROMPT.replace("English", "German") + """
+- For verb tenses and moods, the "pattern" of each form shows all six persons
+  (ich / du / er, sie, es / wir / ihr / sie, Sie), using a regular verb such as machen or spielen;
+  mention the most important irregular verbs, and haben or sein where it matters, in "uses".
+- For articles, pronouns, adjective endings and prepositions, show the case (Nominativ, Akkusativ, Dativ,
+  Genitiv) in the pattern, and keep gender, case and verb position correct in every example."""
+
+LESSON_PROMPTS = {"en": LESSON_PROMPT, "es": LESSON_PROMPT_ES, "de": LESSON_PROMPT_DE}
 
 
 def clean_lesson(raw):
@@ -250,7 +275,32 @@ Rules:
 - Each prompt contains _____ exactly once. Sentences are natural Spanish of Spain at the learner's level,
   with all accents and ¿ ¡ marks."""
 
-QUIZ_PROMPTS = {"en": QUIZ_PROMPT, "es": QUIZ_PROMPT_ES}
+QUIZ_PROMPT_DE = """Write an ORIGINAL practice exercise for your learner.
+Grammar point: {en}
+Learner level: {level_note}
+{subtopics}
+
+Return ONLY a JSON object with this exact shape:
+{{"questions": [
+  {{"type": "choice", "prompt": "a sentence with _____ where the answer goes", "options": ["...", "...", "...", "..."], "answer": "the full text of the correct option", "explanation": "..."}},
+  {{"type": "gap", "prompt": "a sentence with _____ and the base word in brackets, e.g. Meine Schwester _____ (wohnen) in Hamburg.", "answer": "wohnt", "accept": ["optional other fully correct forms"], "explanation": "..."}}
+]}}
+
+Rules:
+- Write 8 questions: 5 "choice" with exactly 4 options and 3 "gap". Mix them, easier ones first.
+- If a list of sub-points is given, spread the questions across them.
+- Every question tests the grammar point above and has exactly one correct option. Wrong options are errors that
+  Turkish-speaking learners really make (wrong article or gender, wrong case, wrong adjective ending, wrong verb
+  position, haben instead of sein, a separable prefix in the wrong place).
+- For "gap": the answer is one to four words with correct spelling (ä, ö, ü, ß); give the base word (infinitive,
+  adjective without ending, or the article in the nominative) in brackets so only one answer is correct. When the
+  answer has no base form (a preposition or conjunction), put the possible choices in brackets instead,
+  e.g. (weil / denn) or (in / im). Put any other fully correct form in "accept".
+- "explanation" is one or two short sentences in Turkish: the rule, and why the common wrong choice is wrong.
+- Each prompt contains _____ exactly once. Sentences are natural standard German at the learner's level,
+  with every noun capitalised."""
+
+QUIZ_PROMPTS = {"en": QUIZ_PROMPT, "es": QUIZ_PROMPT_ES, "de": QUIZ_PROMPT_DE}
 
 
 def make_quiz(key, lang="en"):

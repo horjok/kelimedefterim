@@ -61,6 +61,10 @@ function dictationNormalize(value) {
 // "estacion" yazan "estación" bilmiş sayılır (doğru yazım cevapta yine görünür).
 function dictationAnswerNormalize(value) {
     let text = dictationNormalize(value).replace(/[^\p{L}\p{N}']/gu, "");
+    if (currentLang() === "de") {
+        // Almancada ä/ö/ü ayrı harftir (schon ≠ schön); klavyede yoksa ae/oe/ue ve ß yerine ss kabul edilir
+        return text.normalize("NFC").replace(/ß/g, "ss").replace(/ae/g, "ä").replace(/oe/g, "ö").replace(/ue/g, "ü");
+    }
     return currentLang() === LANG_DEFAULT ? text : text.normalize("NFD").replace(/\p{M}/gu, "");
 }
 

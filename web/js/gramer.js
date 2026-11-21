@@ -10,7 +10,7 @@
 // Diller (20 Kasım 2026): her dilin kendi müfredatı var (GRAMER_FILES). İspanyolcada konu adı "name",
 // örnek cümle "text" alanında (İngilizcede "en"); gramerName / gramerText ikisini de okur.
 
-const GRAMER_FILES = { en: "data/gramer.json", es: "data/gramer-es.json" };
+const GRAMER_FILES = { en: "data/gramer.json", es: "data/gramer-es.json", de: "data/gramer-de.json" };
 const GRAMER_TEXTS = {
     en: {
         hint: "İngilizce dil bilgisinin bütün konuları, temelden ileriye. Bir konu seç: anlatımı oku, örnekleri gör, alıştırmasını çöz.",
@@ -21,6 +21,11 @@ const GRAMER_TEXTS = {
         hint: "İspanyolca (İspanya) dil bilgisinin temel konuları, A1'den C1'e. Bir konu seç: özeti ve örnekleri oku, ayrıntılı anlatımı aç, alıştırmasını çöz.",
         search: "Konu ara: subjuntivo, ser, por, geçmiş…",
         credit: "Konular ve seviyeleri yaklaşıktır; İspanyolca derslerindeki yaygın sıralama örnek alındı. Özetler, örnekler ve alıştırmalar özgündür; herhangi bir kitaptan alınmamıştır. Çekimler İspanya kullanımına göredir (vosotros dahil).",
+    },
+    de: {
+        hint: "Almanca dil bilgisinin temel konuları, A1'den C1'e: artikeller, hâller, fiiller, yan cümleler. Bir konu seç: özeti ve örnekleri oku, ayrıntılı anlatımı aç, alıştırmasını çöz.",
+        search: "Konu ara: Dativ, Perfekt, weil, artikel…",
+        credit: "Konular ve seviyeleri yaklaşıktır; Almanca derslerindeki yaygın sıralama örnek alındı. Özetler, örnekler ve alıştırmalar özgündür; herhangi bir kitaptan alınmamıştır. Standart Almanca (Almanya) esas alındı.",
     },
 };
 

@@ -1,4 +1,4 @@
-// Dil katmanı: kullanıcının hangi dili çalıştığı (İngilizce, İspanyolca; ileride başkaları).
+// Dil katmanı: kullanıcının hangi dili çalıştığı (İngilizce, İspanyolca, Almanca; ileride başkaları).
 // helpers.js'ten hemen sonra, öbür bütün script'lerden önce yüklenir.
 //
 // - currentLang(): seçili dilin kodu ("en"). localStorage "lang" içinde saklanır.
@@ -18,7 +18,17 @@ const LANG_INFO = {
     // İspanyolca: video, dikte, kelimeler, kartlar, sözlük, gramer, Pekiştir (A1–C2 + konulu listeler). IELTS yok.
     es: { name: "İspanyolca", nameOf: "İspanyolcası", nameOfAcc: "İspanyolcasını", native: "Español", tts: "es-ES",
         features: ["ipa", "grammar", "wordbank", "topics"] },
+    // Almanca (21 Kasım 2026): İspanyolcayla aynı bölümler. İsimler büyük harfle; artikel Pekiştir ve eş anlamlılarda.
+    de: { name: "Almanca", nameOf: "Almancası", nameOfAcc: "Almancasını", native: "Deutsch", tts: "de-DE",
+        features: ["ipa", "grammar", "wordbank", "topics"] },
 };
+
+// Büyük-küçük harfin anlam taşıdığı diller: kelime aranırken ve kaydedilirken küçük harfe çevrilmez (Almanca: Tisch)
+const LANG_KEEPS_CASE = ["de"];
+
+function langWordCase(text) {
+    return LANG_KEEPS_CASE.includes(currentLang()) ? text : text.toLowerCase();
+}
 
 // Sayfa → gerektirdiği özellik (backend/app.py FEATURE_PATHS ile uyumlu)
 const LANG_PAGE_FEATURES = { "pekistir.html": "wordbank", "gramer.html": "grammar", "ielts.html": "ielts" };

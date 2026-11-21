@@ -180,7 +180,7 @@ function pkPaintStart() {
 function pkFromSaved(entry) {
     return {
         word: entry.word, tr: entry.tr, pos: entry.pos || "", ipa: entry.ipa || "", level: entry.level || "",
-        example: entry.example || "", exampleTr: ""
+        example: entry.example || "", exampleTr: "", art: entry.art || ""
     };
 }
 
@@ -241,7 +241,7 @@ function pkPaintDots() {
 function pkPaintCard() {
     let item = pkCurrent;
     document.getElementById("pkCardMeta").textContent = [item.level, item.pos].filter(Boolean).join(" · ") || "kelime";
-    document.getElementById("pkCardWord").textContent = item.word;
+    document.getElementById("pkCardWord").textContent = savedHead(item);  // Almanca isimde "der Tisch"
     document.getElementById("pkCardIpa").textContent = item.ipa ? `/${item.ipa}/` : "";
     document.getElementById("pkCardTr").textContent = item.tr;
     document.getElementById("pkCardExample").textContent = item.example;
@@ -310,8 +310,8 @@ function pkWordCard(item, extra) {
     let speak = ieltsElement("button", "mini ico-speaker", "");
     speak.type = "button";
     speak.setAttribute("aria-label", `${item.word} kelimesini dinle`);
-    speak.addEventListener("click", function () { pkSpeak(item.word); });
-    head.append(ieltsElement("span", "pk-study-word", item.word), ieltsElement("span", "study-ipa", item.ipa ? `/${item.ipa}/` : ""), speak);
+    speak.addEventListener("click", function () { pkSpeak(savedHead(item)); });
+    head.append(ieltsElement("span", "pk-study-word", savedHead(item)), ieltsElement("span", "study-ipa", item.ipa ? `/${item.ipa}/` : ""), speak);
     card.appendChild(head);
     card.appendChild(ieltsElement("p", "pk-tr", item.tr));
     if (item.example) {
@@ -429,7 +429,7 @@ function pkAsk() {
     sub.textContent = "";
 
     if (pkQuestion.kind === "toTr") {
-        prompt.textContent = item.word;
+        prompt.textContent = savedHead(item);
         sub.textContent = "Bu kelimenin Türkçesi hangisi?";
         pkChoices(pkOptions(item, "tr", false), item.tr);
     } else if (pkQuestion.kind === "toEn") {
@@ -471,7 +471,7 @@ function pkResolve(right, given) {
     feedback.hidden = false;
     feedback.className = right ? "pk-feedback right" : "pk-feedback wrong";
     let line = ieltsElement("p", "pk-feedback-line");
-    line.append(right ? "✓ Doğru: " : "✗ Doğrusu: ", ieltsElement("b", "", item.word), ` = ${item.tr}`);
+    line.append(right ? "✓ Doğru: " : "✗ Doğrusu: ", ieltsElement("b", "", savedHead(item)), ` = ${item.tr}`);
     if (item.ipa) {
         line.append(ieltsElement("span", "study-ipa", `  /${item.ipa}/`));
     }
@@ -621,8 +621,10 @@ function pkTiles(item) {
         let key = event.key.toLowerCase();
         let bare = (text) => text.normalize("NFD").replace(/\p{M}/gu, "");
         // Vurgulu harf klavyede zor: "a" yazınca boşta "a" yoksa "á" kutucuğu seçilir
-        let tile = tiles.find((entry) => !entry.disabled && entry.textContent === key)
-            || (key.length === 1 ? tiles.find((entry) => !entry.disabled && bare(entry.textContent) === key) : undefined);
+        // Almanca isim büyük harfle başlar (Käse): "k" yazınca boşta "k" yoksa "K" kutucuğu seçilir
+        let tile = tiles.find((entry) => !entry.disabled && entry.textContent === event.key)
+            || tiles.find((entry) => !entry.disabled && entry.textContent.toLowerCase() === key)
+            || (key.length === 1 ? tiles.find((entry) => !entry.disabled && bare(entry.textContent).toLowerCase() === key) : undefined);
         if (tile) {
             place(tile);
         }
@@ -679,7 +681,7 @@ function pkFinish() {
             let ok = savedAdd({
                 key: key, kind: kind, word: item.word, tr: item.tr, ipa: item.ipa,
                 pos: kind === "phrasal" ? "phrasal verb" : item.pos, level: kind === "phrasal" ? "" : item.level,
-                example: item.example, videoId: "", videoTitle: "", start: 0
+                example: item.example, videoId: "", videoTitle: "", start: 0, ...(item.art ? { art: item.art } : {})
             }, "inCards");
             if (ok) {
                 added++;
@@ -719,7 +721,7 @@ document.getElementById("pkKnow").addEventListener("click", function () { pkAnsw
 document.getElementById("pkPick").addEventListener("click", function () { pkAnswerCard(false); });
 document.getElementById("pkCardReveal").addEventListener("click", pkReveal);
 document.getElementById("pkCardSpeak").addEventListener("click", function () {
-    if (pkCurrent && !pkSpeak(pkCurrent.word)) {
+    if (pkCurrent && !pkSpeak(savedHead(pkCurrent))) {
         pkStatus("pkBrowseStatus", "Tarayıcın sesli okumayı desteklemiyor.", "error");
     }
 });
@@ -753,7 +755,7 @@ document.addEventListener("keydown", function (event) {
             pkReveal();
             event.preventDefault();
         } else if (event.key.toLowerCase() === "d" && pkCurrent) {
-            pkSpeak(pkCurrent.word);
+            pkSpeak(savedHead(pkCurrent));
         }
     } else if (!document.getElementById("pkStage").hidden && pkTileKey && pkQuestion && pkQuestion.kind === "spell") {
         pkTileKey(event);

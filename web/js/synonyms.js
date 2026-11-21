@@ -78,7 +78,8 @@ function synSaveButton(synonym, pos) {
             savedRemove(key, "inList");
         } else {
             savedAdd({ key: key, kind: kind, word: synonym.word, tr: synonym.tr, ipa: "", pos: kind === "word" ? pos : "",
-                       level: "", example: synonym.example, videoId: "", videoTitle: "", start: 0 }, "inList");
+                       level: "", example: synonym.example, videoId: "", videoTitle: "", start: 0,
+                       ...(synonym.article ? { art: synonym.article } : {}) }, "inList");
         }
         paint();
         document.dispatchEvent(new CustomEvent("saved-change"));  // Kelimeler sayfası listeyi yeniler
@@ -90,6 +91,10 @@ function synSaveButton(synonym, pos) {
 function synItem(synonym, pos) {
     let item = synElement("li", "syn-item");
     let head = synElement("div", "syn-head");
+    // Almanca isimlerde artikel (der / die / das) kelimenin önünde, soluk
+    if (synonym.article) {
+        head.appendChild(synElement("span", "syn-art", synonym.article));
+    }
     head.appendChild(synElement("span", "syn-word", synonym.word));
     if (synonym.tr) {
         head.appendChild(synElement("span", "syn-tr", `= ${synonym.tr}`));

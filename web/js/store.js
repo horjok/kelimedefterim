@@ -2,7 +2,7 @@
 // Tüm sayfalar aynı kaydı paylaşır. Veri tarayıcıda durur: localStorage "savedWords".
 //
 // Her kayıt:
-// { key, kind: "word" | "phrasal", word, tr, ipa, pos, level,
+// { key, kind: "word" | "phrasal", word, tr, ipa, pos, level, art?, ← art: Almanca ismin artikeli (der, die, das)
 //   example, clipStart, clipEnd,        ← kelimenin videoda geçtiği cümle ve o cümlenin saniyeleri
 //   videoId, videoTitle, start, addedAt,
 //   inList, inCards,                    ← defterde mi, çalışma kartlarında mı
@@ -58,6 +58,11 @@ function savedWriteAll(list) {
 // Aynı kelime iki kez kaydedilmesin diye anahtar: "w:garden" ya da "p:pick up"
 function savedKey(kind, word) {
     return `${kind === "phrasal" ? "p" : "w"}:${word.toLowerCase()}`;
+}
+
+// Ekranda görünen ad: Almanca isimlerde artikeliyle ("der Tisch"; art alanı Pekiştir ve eş anlamlılardan gelir)
+function savedHead(entry) {
+    return entry.art ? `${entry.art} ${entry.word}` : entry.word;
 }
 
 function savedGet(key) {

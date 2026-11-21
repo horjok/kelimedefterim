@@ -33,6 +33,16 @@ LANGUAGES = {
         "translate": "es",
         "features": ["ipa", "grammar", "wordbank", "topics"],
     },
+    # Almanca (21 Kasım 2026): İspanyolcayla aynı yol. Telaffuz Hochdeutsch (kural tabanlı, backend/german.py),
+    # isimler büyük harfle; Pekiştir ve eş anlamlılarda artikel (der/die/das) Gemini denetiminden gelir.
+    "de": {
+        "name": "Almanca",
+        "native": "Deutsch",
+        "transcript": ["de", "de-DE", "de-AT", "de-CH"],
+        "tts": "de-DE",
+        "translate": "de",
+        "features": ["ipa", "grammar", "wordbank", "topics"],
+    },
 }
 
 

@@ -1169,6 +1169,7 @@ input[type="checkbox"] { accent-color: var(--primary); }
 .syn-list .syn-item { padding: 12px 16px; border: 0; border-radius: 12px; background: var(--paper); }
 .syn-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
 .syn-word { font: 800 18px var(--font-display); color: var(--ink); }
+.syn-art { font: 700 16px var(--font-display); color: var(--ink-soft); margin-right: -4px; }  /* Almanca artikel: der Tisch */
 .syn-tr { color: var(--ink); }
 .syn-note { margin: 4px 0 0; font-size: 14px; color: var(--ink-soft); }
 .syn-example { margin: 6px 0 0; font-style: italic; color: var(--ink); }

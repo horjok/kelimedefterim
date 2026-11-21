@@ -84,7 +84,7 @@ Kelime haznesi sunucuda birikir. Anlam ve örnek cümle çeviri ile sözlükten 
 ![Sözlük: kelime aranır, sondan başa hecelenir, açılmış videolarda geçtiği cümleler listelenir](docs/gif/sozluk.gif)
 
 - Tanım, IPA, UK/US/AU sesleri, örnekler ve eş anlamlılar Free Dictionary API'den (Wiktionary) gelir.
-- **Eş anlamlılar (İngilizce ve İspanyolca):** kelimenin anlamlarına göre gruplanmış eş anlamlıları, her birinin Türkçesi, aranan kelimeden farkı (resmi, günlük, daha güçlü…) ve bir örnek cümleyle. Kartlar'da cevap açılınca, Kelimeler'de her satırda ve Sözlük'te açılır; beğendiğin eş anlamlıyı tek dokunuşla deftere eklersin. Gemini üretir, her kelime bir kez sorulup saklanır.
+- **Eş anlamlılar (İngilizce, İspanyolca, Almanca):** kelimenin anlamlarına göre gruplanmış eş anlamlıları, her birinin Türkçesi, aranan kelimeden farkı (resmi, günlük, daha güçlü…) ve bir örnek cümleyle. Kartlar'da cevap açılınca, Kelimeler'de her satırda ve Sözlük'te açılır; beğendiğin eş anlamlıyı tek dokunuşla deftere eklersin. Gemini üretir, her kelime bir kez sorulup saklanır.
 - **Sondan başa heceleme:** kelime IPA heceleriyle sondan başa doğru kurulur, ana vurgulu hece işaretlenir.
 - **Videolarda geçtiği yerler:** kelime (çekimleriyle birlikte: fall → fell, falling) daha önce açtığın videolarda aranır. Her cümle, videoyu o saniyede açan bir bağlantıdır. İstersen YouGlish örnekleri de yüklenir.
 - Cambridge Dictionary'nin içeriği uygulamaya alınmaz, kelimenin Cambridge sayfası yeni sekmede açılır.
@@ -133,7 +133,7 @@ seri, ilerleme, notlar                          storage.py: önbellek
 - **Kullanıcı verisi** yalnızca tarayıcıda (localStorage) durur. Sunucuda hesap ya da kullanıcı verisi yoktur.
 - **Önbellek:** çeviriler, transkriptler, gramer analizleri, konu anlatımları ve kelime haznesi bir kez üretilip saklanır. Aynı istek ikinci kez dış servise gitmez. Rate limit'e karşı asıl önlem budur.
 - **Model çıktısına güvenilmez:** Gemini yanıtları JSON olarak istenir ve alan alan denetlenir. Satır numarası tutmayan örnek, cevabı seçeneklerde olmayan soru ya da kaynakta geçmeyen alıntı atılır.
-- **Çoklu dil:** API `?lang=` alır, localStorage anahtarları dile göre ayrılır (destesi, defteri ayrı). Kenar çubuğundaki **Dil** seçimiyle İspanyolcaya geçilir: video, dikte, kelimeler, kartlar ve sözlük çalışır. Telaffuz İspanya aksanına göre kurallarla üretilir (cielo /ˈθjelo/), yalın hâl simplemma ile bulunur, seviye sıklıktan tahmin edilir. Dikte vurgu işaretsiz cevabı da kabul eder (estacion = estación). İspanyolcanın kendi gramer müfredatı (70 konu, A1–C1, İspanya kullanımı), Gemini anlatımı ve alıştırmaları, videoda Gramer modu ve Pekiştir var: sıklık listesinden A1–C2 ya da 31 konuda B1/B2/C1 konulu listeler (1302 kelime). Phrasal verb'ler ve IELTS yalnızca İngilizcede.
+- **Çoklu dil:** API `?lang=` alır, localStorage anahtarları dile göre ayrılır (destesi, defteri ayrı). Kenar çubuğundaki **Dil** seçimiyle İspanyolcaya geçilir: video, dikte, kelimeler, kartlar ve sözlük çalışır. Telaffuz İspanya aksanına göre kurallarla üretilir (cielo /ˈθjelo/), yalın hâl simplemma ile bulunur, seviye sıklıktan tahmin edilir. Dikte vurgu işaretsiz cevabı da kabul eder (estacion = estación). İspanyolcanın kendi gramer müfredatı (70 konu, A1–C1, İspanya kullanımı), Gemini anlatımı ve alıştırmaları, videoda Gramer modu ve Pekiştir var: sıklık listesinden A1–C2 ya da 31 konuda B1/B2/C1 konulu listeler (1302 kelime). **Almanca** da aynı bölümlerle çalışır: Hochdeutsch okunuşu kurallarla (Straße /ˈʃtʁaːsə/), isimler büyük harfle ve Pekiştir'de, kartlarda, eş anlamlılarda artikeliyle (der Tisch), 72 konuluk gramer müfredatı ve 31 konulu liste (1302 kelime); dikte ä/ö/ü'yü ayrı harf sayar ama ae/oe/ue ve ss'yi kabul eder. Phrasal verb'ler ve IELTS yalnızca İngilizcede.
 
 ## Kurulum
 
@@ -175,8 +175,9 @@ Yerelde açtığın videonun transkripti Redis'e yazılır, Vercel'deki site de 
 ├── backend/               Flask sunucusu
 │   ├── app.py             Uygulama ve /api/* uç noktaları; web/ klasörünü sunar
 │   ├── config.py          Yollar ve ayarlar, .env.local okuma
-│   ├── languages.py       Öğrenilen diller kaydı (İngilizce, İspanyolca)
+│   ├── languages.py       Öğrenilen diller kaydı (İngilizce, İspanyolca, Almanca)
 │   ├── spanish.py         İspanyolca paketi: IPA (İspanya aksanı), heceleme, yalın hâl, seviye, kelime listesi
+│   ├── german.py          Almanca paketi: IPA (Hochdeutsch), heceleme, yalın hâl, ß düzeltmeleri, seviye, kelime listesi
 │   ├── storage.py         Önbellek deposu (cache/ ya da Upstash Redis)
 │   ├── transcripts.py     YouTube transkripti, cümlelere bölme, videolarda kelime arama
 │   ├── ipa.py             IPA telaffuz ve heceleme
@@ -190,7 +191,7 @@ Yerelde açtığın videonun transkripti Redis'e yazılır, Vercel'deki site de 
 │   └── phrasal_verbs.py   Phrasal verb sözlüğü
 ├── web/                   Arayüz
 │   ├── *.html             Bugün, Kartlar, Kelimeler, Pekiştir, Kitaplık, Video, Sözlük, Gramer, IELTS
-│   ├── data/              Gramer müfredatları (İngilizce 121, İspanyolca 70 konu), konulu kelime listeleri (iki dilde 31 konu)
+│   ├── data/              Gramer müfredatları (İngilizce 121, İspanyolca 70, Almanca 72 konu), konulu kelime listeleri (üç dilde 31 konu)
 │   ├── css/style.css
 │   └── js/
 ├── docs/gif/              README'deki kayıtlar
