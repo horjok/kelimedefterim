@@ -4,6 +4,8 @@ Kelime Defteri Flask uygulaması.
 - web/ klasöründeki HTML/CSS/JS dosyalarını http://localhost:8000 adresinden sunar.
 - /api/transcript?url=<youtube linki> : videonun İngilizce transkriptini
   cümlelere böler ve her kelimenin IPA (fonetik) telaffuzunu ekler.
+- /api/song?url=<spotify şarkı linki> : şarkının zaman damgalı sözleri (LRCLIB); sözler video transkriptiyle
+  aynı biçimde saklanır (kimlik sp:<id>), kelime listesi ve gramer aynı uçlardan alınır.
 - /api/vocab?url=<youtube linki> : videodaki kelimeler, seviyelere göre.
 - /api/translate?text=<cümle> : tek bir cümlenin Türkçe çevirisi.
 - /api/grammar?url=<youtube linki> : videodaki gramer konuları (Gemini API, grammar.py).
@@ -12,36 +14,42 @@ Kelime Defteri Flask uygulaması.
 - /api/lesson?topic=<konu> ve /api/lesson/quiz : Gramer bölümü (lessons.py): konu anlatımı ve alıştırma.
 - /api/wordbank : Pekiştir sayfası için seviyeli kelime haznesi (wordbank.py).
 - /api/ielts/* : IELTS bölümü (ielts.py): Reading/Listening setleri, Writing konusu ve değerlendirmesi, Speaking soruları.
+- /api/languages : öğrenilebilen diller (languages.py). Bütün /api/* istekleri ?lang= alır (yoksa İngilizce).
+  Transkript, kelime listesi, çeviri, heceleme ve kelime araması dile göre çalışır; gramer, Pekiştir ve IELTS
+  yalnızca dil kaydında o özellik varsa açılır (FEATURE_PATHS).
 """
 
 import hmac
 from pathlib import Path
 from urllib.error import HTTPError
 
-from flask import Flask, Response, abort, jsonify, request, send_from_directory
+from flask import Flask, Response, abort, g, jsonify, request, send_from_directory
 
-from . import ielts, lessons, wordbank
+from . import grammar as grammar_module, ielts, languages, lessons, songs, synonyms, wordbank
 from .config import APP_PASSWORD, APP_PUBLIC, ON_VERCEL, WEB_DIR
 from .gemini import GeminiError
 from .grammar import GrammarError, analyze_grammar
-from .ipa import WORD, prepare_ipa, syllabify, token_to_ipa
+from .ipa import prepare_ipa, token_to_ipa
 from .transcripts import (
+    PACKS,
+    SONG_ID,
     TranscriptError,
     clean,
     extract_video_id,
     find_occurrences,
     get_transcript,
     load_transcripts,
+    pack,
     transcript_cache,
 )
-from .vocab import build_vocab, translate_sentence
+from .vocab import build_vocab, translate_all, translate_sentence, translations_for
 
 STATIC_TYPES = {".html", ".css", ".js", ".json", ".png", ".jpg", ".svg", ".ico", ".webp"}  # .json: yalnızca web/data/ (önbellekler web/ dışında)
 
 app = Flask(__name__, static_folder=None)
 app.json.ensure_ascii = False  # IPA sembolleri JSON'da okunur kalsın
 
-vocab_cache = {}  # video id -> kelime listesi
+vocab_cache = {}  # (dil, video id) -> kelime listesi
 load_transcripts()  # daha önce açılmış videoların transkriptleri (kelime araması için)
 
 
@@ -92,13 +100,53 @@ def error(message, status):
     return jsonify({"error": message}), status
 
 
+# Bu yollar dil kaydında ilgili özellik yoksa kapalıdır (ör. İspanyolcada IELTS yok)
+FEATURE_PATHS = (("/api/grammar", "grammar"), ("/api/lesson", "grammar"), ("/api/wordbank", "wordbank"), ("/api/ielts", "ielts"))
+
+
+@app.before_request
+def choose_language():
+    """Her API isteği çalışılan dili ?lang= ile taşır (web/js/lang.js apiUrl ekler). Verilmezse İngilizce.
+    Seçilen dil g.lang içinde durur; dile özgü kodlar oradan okur."""
+    if not request.path.startswith("/api/"):
+        return None
+    code = languages.resolve(request.args.get("lang"))
+    if code is None:
+        return error("Bu dil henüz desteklenmiyor.", 400)
+    g.lang = code
+    for prefix, feature in FEATURE_PATHS:
+        if request.path.startswith(prefix) and feature not in languages.info(code)["features"]:
+            return jsonify({"error": f"Bu bölüm {languages.info(code)['name']} için henüz hazır değil.", "code": "no_feature"}), 404
+    return None
+
+
+@app.get("/api/languages")
+def language_list():
+    return jsonify({"default": languages.DEFAULT, "languages": languages.public_list()})
+
+
+NOT_A_LINK = "Bu geçerli bir YouTube ya da Spotify şarkı linki değil."
+
+
+def source_id(url):
+    """Linkten kaynak kimliği: YouTube video id'si ya da Spotify şarkısı için sp:<id>; tanınmazsa None."""
+    try:
+        video_id = extract_video_id(url)
+    except ValueError:  # "https://[" gibi ayrıştırılamayan metin: link değil sayılır (400)
+        video_id = None
+    if video_id:
+        return video_id
+    track_id = songs.extract_track_id(url)
+    return songs.song_id(track_id) if track_id else None
+
+
 @app.get("/api/transcript")
 def transcript():
-    video_id = extract_video_id(request.args.get("url", ""))
+    video_id = source_id(request.args.get("url", ""))
     if not video_id:
-        return error("Bu geçerli bir YouTube linki değil.", 400)
+        return error(NOT_A_LINK, 400)
     try:
-        return jsonify(get_transcript(video_id))
+        return jsonify(get_transcript(video_id, g.lang))
     except TranscriptError as exc:
         return error(exc.message, exc.status)
 
@@ -106,19 +154,24 @@ def transcript():
 @app.get("/api/vocab")
 def vocabulary():
     """Videodaki kelimeler: seviyelere göre (A1...C2) + phrasal verb'ler, Türkçe anlamlarıyla."""
-    video_id = extract_video_id(request.args.get("url", ""))
+    video_id = source_id(request.args.get("url", ""))
     if not video_id:
-        return error("Bu geçerli bir YouTube linki değil.", 400)
-    if video_id in vocab_cache:
-        return jsonify(vocab_cache[video_id])
+        return error(NOT_A_LINK, 400)
+    key = (g.lang, video_id)
+    if key in vocab_cache:
+        return jsonify(vocab_cache[key])
     try:
-        lines = get_transcript(video_id)["lines"]
+        lines = get_transcript(video_id, g.lang)["lines"]
     except TranscriptError as exc:
         return error(exc.message, exc.status)
 
-    data = build_vocab(lines, token_to_ipa, prepare_ipa)
+    if g.lang in PACKS:
+        lang = g.lang
+        data = PACKS[lang].build_vocab(lines, lambda texts: translate_all(texts, lang), translations_for(lang))
+    else:
+        data = build_vocab(lines, token_to_ipa, prepare_ipa)
     if data["translationError"] is None:  # eksik çeviriyle önbelleğe alma, sonra tekrar denensin
-        vocab_cache[video_id] = data
+        vocab_cache[key] = data
     return jsonify(data)
 
 
@@ -126,26 +179,98 @@ def vocabulary():
 def grammar():
     """Videodaki gramer konuları (Gemini API): {"model", "topics": [...], "truncated"}.
     Hata: {"error": mesaj, "code": "no_key" | "bad_key" | "quota" | ...}."""
-    video_id = extract_video_id(request.args.get("url", ""))
+    video_id = source_id(request.args.get("url", ""))
     if not video_id:
-        return error("Bu geçerli bir YouTube linki değil.", 400)
+        return error(NOT_A_LINK, 400)
     try:
-        lines = get_transcript(video_id)["lines"]
+        lines = get_transcript(video_id, g.lang)["lines"]
     except TranscriptError as exc:
         return error(exc.message, exc.status)
     try:
-        return jsonify(analyze_grammar(video_id, lines))
+        return jsonify(analyze_grammar(video_id, lines, g.lang))
     except GrammarError as exc:
         return jsonify({"error": exc.message, "code": exc.code}), exc.status
+
+
+# ===== Şarkılar (Spotify linki → LRCLIB sözleri) =====
+
+def lyrics_choice(raw):
+    """?lyrics= değeri: LRCLIB kayıt numarası (pozitif tam sayı); yoksa None, bozuksa ValueError."""
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    if not (raw.isascii() and raw.isdigit()):
+        raise ValueError(raw)
+    return int(raw)
+
+
+def spotify_duration(raw):
+    """?duration= saniye; sayı değilse ya da anlamsızsa yok sayılır."""
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    return value if 0 < value < 36000 else None  # nan ve inf bu aralığın dışında kalır
+
+
+@app.get("/api/song")
+def song():
+    """Spotify şarkısının sözleri: ?url=&lyrics=<LRCLIB no>&duration=<sn>&choose=1 (aday listesini zorla).
+    Tek uygun söz varsa şarkı (transkript biçimi + kind/title/artist/thumbnail/lrclibId/languageWarning),
+    birden çok sanatçı ya da süre uyuşmazlığı varsa {"choose": true, "title", "thumbnail", "candidates"} döner."""
+    link = request.args.get("url", "")
+    track_id = songs.extract_track_id(link)
+    if not track_id:
+        if songs.is_spotify_link(link):
+            return error("Yalnızca tek bir şarkının linkini yapıştır.", 400)
+        return error("Bu geçerli bir Spotify şarkı linki değil.", 400)
+    try:
+        chosen = lyrics_choice(request.args.get("lyrics"))
+    except ValueError:
+        return error("Geçersiz söz seçimi.", 400)
+
+    # choose=1: "Başka söz seç" düğmesi; önbellek atlanır, tek aday olsa bile aday listesi döner
+    force_choice = request.args.get("choose") == "1" and chosen is None
+
+    sid = songs.song_id(track_id)
+    if chosen is None and not force_choice:  # daha önce açılmış şarkı: ağa çıkmadan önbellekten
+        try:
+            return jsonify(get_transcript(sid, g.lang))
+        except TranscriptError:
+            pass
+
+    try:
+        try:
+            meta = songs.song_meta(track_id)
+        except songs.SongError:
+            raise songs.SongError("Spotify'dan şarkı bilgisi alınamadı.", 502)  # bulunamadı da ağ hatası da aynı
+        if chosen is not None:
+            candidate = songs.fetch_lyrics(chosen)
+        else:
+            candidates = songs.find_lyrics(meta["title"])
+            if not candidates:
+                raise songs.SongError("Bu şarkının zaman damgalı sözleri bulunamadı.", 404)
+            candidate = None if force_choice else songs.choose_candidate(candidates, spotify_duration(request.args.get("duration")))
+            if candidate is None:
+                return jsonify({"choose": True, "title": meta["title"], "thumbnail": meta["thumbnail"],
+                                "candidates": songs.public_candidates(candidates)})
+        data = songs.get_song(track_id, candidate, meta, g.lang)
+    except songs.SongError as exc:
+        return error(exc.message, exc.status)
+    # Sözler değişmiş olabilir ("Başka söz seç"): eski söze göre hazırlanmış kelime listesi ve gramer analizi kalmasın
+    vocab_cache.pop((g.lang, sid), None)
+    grammar_module.forget(sid, g.lang)
+    return jsonify(data)
 
 
 @app.get("/api/syllables")
 def syllable_list():
     """Kelimenin heceleri: {"word", "syllables": [{"ipa", "stress": 0|1|2}]}. stress: 1 ana vurgu, 2 ikincil."""
     word = clean(request.args.get("word", "")).lower().replace("’", "'")[:40]
-    if not WORD.fullmatch(word):
-        return error("Tek bir İngilizce kelime yaz.", 400)
-    parts = syllabify(word)
+    speech = pack(g.lang)
+    if not speech.WORD.fullmatch(word):
+        return error(f"Tek bir {languages.info(g.lang)['name']} kelime yaz.", 400)
+    parts = speech.syllabify(word)
     if not parts:
         return error("Bu kelimenin okunuşu sözlükte yok.", 404)
     return jsonify({"word": word, "syllables": parts})
@@ -155,7 +280,7 @@ def syllable_list():
 def occurrences():
     """Kelimenin daha önce açılmış videolarda geçtiği cümleler:
     {"word", "forms", "total", "searched", "videos": [{"videoId", "title", "count", "hits": [{"line", "start", "text", "span"}]}]}."""
-    result = find_occurrences(clean(request.args.get("word", ""))[:80])
+    result = find_occurrences(clean(request.args.get("word", ""))[:80], g.lang)
     if result is None:
         return error("Aranacak kelime yok.", 400)
     return jsonify(result)
@@ -168,7 +293,7 @@ def translate():
     if not text:
         return error("Çevrilecek metin yok.", 400)
     try:
-        return jsonify({"tr": translate_sentence(text)})
+        return jsonify({"tr": translate_sentence(text, g.lang)})
     except HTTPError as exc:
         if exc.code == 429:  # Google kısa sürede çok istek geldiğini söylüyor
             return error("Çeviri servisi şu an istekleri sınırlıyor. Birkaç dakika sonra yeniden dene.", 503)
@@ -267,7 +392,7 @@ def ielts_set():
 def ielts_videos():
     """Daha önce açılmış (transkripti kayıtlı) videolar: Listening için seçim listesi."""
     videos = [{"videoId": data["videoId"], "title": data.get("title", ""), "lines": len(data["lines"])}
-              for data in transcript_cache.values()]
+              for data in transcript_cache.values() if not SONG_ID.match(data["videoId"])]  # şarkılar Listening'e girmez
     return jsonify({"videos": sorted(videos, key=lambda video: video["title"].lower())})
 
 
@@ -276,13 +401,21 @@ def ielts_videos():
 @app.get("/api/lesson")
 def lesson():
     """Konunun ayrıntılı anlatımı: ?topic=<anahtar>[&fresh=1]. İlk açılışta Gemini üretir, sonra önbellekten gelir."""
-    return ielts_call(lambda: lessons.get_lesson(request.args.get("topic", ""), request.args.get("fresh") == "1"))
+    return ielts_call(lambda: lessons.get_lesson(request.args.get("topic", ""), request.args.get("fresh") == "1", g.lang))
 
 
 @app.post("/api/lesson/quiz")
 def lesson_quiz():
     """Konunun alıştırması: {"topic": anahtar}."""
-    return ielts_call(lambda: lessons.make_quiz(str(body_value("topic"))))
+    return ielts_call(lambda: lessons.make_quiz(str(body_value("topic")), g.lang))
+
+
+# ===== Eş anlamlılar (Kartlar, Kelimeler, Sözlük) =====
+
+@app.get("/api/synonyms")
+def synonym_list():
+    """Kelimenin anlamlarına göre gruplanmış eş anlamlıları: ?word=<kelime>. İlk istekte Gemini üretir, sonra önbellekten."""
+    return ielts_call(lambda: synonyms.get_synonyms(request.args.get("word", ""), g.lang))
 
 
 # ===== Pekiştir sayfası: seviyeli kelime haznesi =====
@@ -290,7 +423,7 @@ def lesson_quiz():
 @app.get("/api/wordbank/sources")
 def word_bank_sources():
     """İçe aktarılmış kelime listesi var mı: {"name": ad, "levels": {"B2": adet, ...}}."""
-    return jsonify(wordbank.list_sources())
+    return jsonify(wordbank.list_sources(g.lang))
 
 
 @app.post("/api/wordbank")
@@ -304,5 +437,6 @@ def word_bank():
             count if isinstance(count, int) and not isinstance(count, bool) else 12,
             [word for word in exclude if isinstance(word, str)][:3000] if isinstance(exclude, list) else [],
             str(body_value("topic", "") or ""),  # kelime konusu (web/data/kelime-konulari.json); boş = karışık
+            g.lang,
         )
     return ielts_call(action)

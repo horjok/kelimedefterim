@@ -35,7 +35,7 @@ let pkBusy = false;    // istek sürerken ya da cevap gösterilirken tıklamalar
 
 function pkRead(key, fallback) {
     try {
-        let value = JSON.parse(localStorage.getItem(key));
+        let value = JSON.parse(localStorage.getItem(langKey(key)));
         return value === null || typeof value !== typeof fallback ? fallback : value;
     } catch (error) {
         return fallback;
@@ -44,7 +44,7 @@ function pkRead(key, fallback) {
 
 function pkWrite(key, value) {
     try {
-        localStorage.setItem(key, JSON.stringify(value));
+        localStorage.setItem(langKey(key), JSON.stringify(value));
     } catch (error) {
         // depolama kapalıysa tercih ve bilinen kelimeler tutulmaz
     }
@@ -79,7 +79,7 @@ function pkSpeak(text, rate) {
     }
     speechSynthesis.cancel();
     let speech = new SpeechSynthesisUtterance(text);
-    speech.lang = "en-US";
+    speech.lang = langTts();
     speech.rate = rate || 0.9;
     speechSynthesis.speak(speech);
     return true;
@@ -180,7 +180,7 @@ function pkPaintStart() {
 function pkFromSaved(entry) {
     return {
         word: entry.word, tr: entry.tr, pos: entry.pos || "", ipa: entry.ipa || "", level: entry.level || "",
-        example: entry.example || "", exampleTr: ""
+        example: entry.example || "", exampleTr: "", art: entry.art || ""
     };
 }
 
@@ -241,7 +241,7 @@ function pkPaintDots() {
 function pkPaintCard() {
     let item = pkCurrent;
     document.getElementById("pkCardMeta").textContent = [item.level, item.pos].filter(Boolean).join(" · ") || "kelime";
-    document.getElementById("pkCardWord").textContent = item.word;
+    document.getElementById("pkCardWord").textContent = savedHead(item);  // Almanca isimde "der Tisch"
     document.getElementById("pkCardIpa").textContent = item.ipa ? `/${item.ipa}/` : "";
     document.getElementById("pkCardTr").textContent = item.tr;
     document.getElementById("pkCardExample").textContent = item.example;
@@ -307,11 +307,11 @@ function pkAnswerCard(known) {
 function pkWordCard(item, extra) {
     let card = ieltsElement("div", "pk-study-item");
     let head = ieltsElement("div", "pk-study-head");
-    let speak = ieltsElement("button", "mini", "🔊");
+    let speak = ieltsElement("button", "mini ico-speaker", "");
     speak.type = "button";
     speak.setAttribute("aria-label", `${item.word} kelimesini dinle`);
-    speak.addEventListener("click", function () { pkSpeak(item.word); });
-    head.append(ieltsElement("span", "pk-study-word", item.word), ieltsElement("span", "study-ipa", item.ipa ? `/${item.ipa}/` : ""), speak);
+    speak.addEventListener("click", function () { pkSpeak(savedHead(item)); });
+    head.append(ieltsElement("span", "pk-study-word", savedHead(item)), ieltsElement("span", "study-ipa", item.ipa ? `/${item.ipa}/` : ""), speak);
     card.appendChild(head);
     card.appendChild(ieltsElement("p", "pk-tr", item.tr));
     if (item.example) {
@@ -378,7 +378,8 @@ function pkBlank(item) {
     if (!item.example) {
         return null;
     }
-    let pattern = new RegExp(`\\b${item.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+    // \b yalnızca ASCII harfleri tanır ("árbol" bulunmazdı): Unicode harf sınırı kullanılır
+    let pattern = new RegExp(`(?<![\\p{L}\\p{N}])${item.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}])`, "iu");
     return pattern.test(item.example) ? item.example.replace(pattern, "_____") : null;
 }
 
@@ -428,16 +429,20 @@ function pkAsk() {
     sub.textContent = "";
 
     if (pkQuestion.kind === "toTr") {
-        prompt.textContent = item.word;
+        prompt.textContent = savedHead(item);
         sub.textContent = "Bu kelimenin Türkçesi hangisi?";
         pkChoices(pkOptions(item, "tr", false), item.tr);
     } else if (pkQuestion.kind === "toEn") {
         prompt.textContent = item.tr;
-        sub.textContent = "Bunun İngilizcesi hangisi?";
+        sub.textContent = `Bunun ${langNameOf()} hangisi?`;
         pkChoices(pkOptions(item, "word", true), item.word);
     } else if (pkQuestion.kind === "sound") {
         let spoken = pkSpeak(item.word);
-        prompt.textContent = spoken ? "🔊" : `/${item.ipa}/`;
+        if (spoken) {
+            prompt.replaceChildren(ieltsElement("span", "ico-speaker", ""));  // büyük hoparlör simgesi
+        } else {
+            prompt.textContent = `/${item.ipa}/`;
+        }
         sub.textContent = spoken ? "Dinle: hangi kelimeyi duydun?" : "Bu okunuş hangi kelimenin?";
         listen.hidden = !spoken;
         pkChoices(pkOptions(item, "word", true), item.word);
@@ -448,7 +453,7 @@ function pkAsk() {
         pkChoices(pkOptions(item, "word", true), item.word);
     } else {
         prompt.textContent = item.tr;
-        sub.textContent = "Harflere dokunarak (ya da klavyeyle) İngilizcesini yaz.";
+        sub.textContent = `Harflere dokunarak (ya da klavyeyle) ${langNameOf(true)} yaz.`;
         listen.hidden = !("speechSynthesis" in window);
         pkTiles(item);
     }
@@ -466,7 +471,7 @@ function pkResolve(right, given) {
     feedback.hidden = false;
     feedback.className = right ? "pk-feedback right" : "pk-feedback wrong";
     let line = ieltsElement("p", "pk-feedback-line");
-    line.append(right ? "✓ Doğru: " : "✗ Doğrusu: ", ieltsElement("b", "", item.word), ` = ${item.tr}`);
+    line.append(right ? "✓ Doğru: " : "✗ Doğrusu: ", ieltsElement("b", "", savedHead(item)), ` = ${item.tr}`);
     if (item.ipa) {
         line.append(ieltsElement("span", "study-ipa", `  /${item.ipa}/`));
     }
@@ -613,7 +618,13 @@ function pkTiles(item) {
             event.preventDefault();  // çok kelimeli ifadede boşluk yazılmaz; kelime araları hazır
             return;
         }
-        let tile = tiles.find((entry) => !entry.disabled && entry.textContent === event.key.toLowerCase());
+        let key = event.key.toLowerCase();
+        let bare = (text) => text.normalize("NFD").replace(/\p{M}/gu, "");
+        // Vurgulu harf klavyede zor: "a" yazınca boşta "a" yoksa "á" kutucuğu seçilir
+        // Almanca isim büyük harfle başlar (Käse): "k" yazınca boşta "k" yoksa "K" kutucuğu seçilir
+        let tile = tiles.find((entry) => !entry.disabled && entry.textContent === event.key)
+            || tiles.find((entry) => !entry.disabled && entry.textContent.toLowerCase() === key)
+            || (key.length === 1 ? tiles.find((entry) => !entry.disabled && bare(entry.textContent).toLowerCase() === key) : undefined);
         if (tile) {
             place(tile);
         }
@@ -670,7 +681,7 @@ function pkFinish() {
             let ok = savedAdd({
                 key: key, kind: kind, word: item.word, tr: item.tr, ipa: item.ipa,
                 pos: kind === "phrasal" ? "phrasal verb" : item.pos, level: kind === "phrasal" ? "" : item.level,
-                example: item.example, videoId: "", videoTitle: "", start: 0
+                example: item.example, videoId: "", videoTitle: "", start: 0, ...(item.art ? { art: item.art } : {})
             }, "inCards");
             if (ok) {
                 added++;
@@ -710,7 +721,7 @@ document.getElementById("pkKnow").addEventListener("click", function () { pkAnsw
 document.getElementById("pkPick").addEventListener("click", function () { pkAnswerCard(false); });
 document.getElementById("pkCardReveal").addEventListener("click", pkReveal);
 document.getElementById("pkCardSpeak").addEventListener("click", function () {
-    if (pkCurrent && !pkSpeak(pkCurrent.word)) {
+    if (pkCurrent && !pkSpeak(savedHead(pkCurrent))) {
         pkStatus("pkBrowseStatus", "Tarayıcın sesli okumayı desteklemiyor.", "error");
     }
 });
@@ -744,16 +755,20 @@ document.addEventListener("keydown", function (event) {
             pkReveal();
             event.preventDefault();
         } else if (event.key.toLowerCase() === "d" && pkCurrent) {
-            pkSpeak(pkCurrent.word);
+            pkSpeak(savedHead(pkCurrent));
         }
     } else if (!document.getElementById("pkStage").hidden && pkTileKey && pkQuestion && pkQuestion.kind === "spell") {
         pkTileKey(event);
     }
 });
 
+// Phrasal verb'ler, konulu listeler ve içe aktarılan liste yalnızca İngilizcede
+document.querySelector('#pkLevels [data-level="PV"]').hidden = !langHas("phrasal");
+
 {
     let saved = pkRead("pekistir:level", "B1");
-    if (document.querySelector(`#pkLevels [data-level="${saved}"]`)) {
+    let button = document.querySelector(`#pkLevels [data-level="${saved}"]`);
+    if (button && !button.hidden) {
         pkLevel = saved;
     }
     pkTopic = pkRead("pekistir:topic", "");
@@ -761,7 +776,7 @@ document.addEventListener("keydown", function (event) {
 pkPaintStart();
 
 // Konulu kelime listeleri: dosya gelmezse sayfa konusuz (karışık) çalışmaya devam eder
-fetch("data/kelime-konulari.json")
+if (langHas("topics")) fetch(currentLang() === LANG_DEFAULT ? "data/kelime-konulari.json" : `data/kelime-konulari-${currentLang()}.json`)
     .then((response) => response.json())
     .then(function (data) {
         pkTopics = Array.isArray(data.topics) ? data.topics : [];
@@ -770,7 +785,7 @@ fetch("data/kelime-konulari.json")
     .catch(function () { pkTopics = []; });
 
 // İçe aktarılmış kelime listesi varsa konu seçimine eklenir (backend/import_wordlist.py)
-fetch("/api/wordbank/sources")
+if (langHas("topics")) fetch(apiUrl("/api/wordbank/sources"))
     .then((response) => response.json())
     .then(function (data) {
         pkList = data && typeof data === "object" ? data : {};

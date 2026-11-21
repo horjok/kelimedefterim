@@ -25,7 +25,7 @@ function buildupWords(line) {
     return line.text
         .replace(/\[[^\]]*\]|\([^)]*\)/g, " ")  // (rock music), [Applause]
         .split(/\s+/)
-        .filter((text) => /[A-Za-z0-9]/.test(text));
+        .filter((text) => /[\p{L}\p{N}]/u.test(text));
 }
 
 // Cümleyi anlam öbeklerine böler: noktalamadan sonra ve BUILDUP_STARTERS kelimelerinden önce
@@ -79,7 +79,9 @@ function buildupRender() {
     document.getElementById("buildupPrev").disabled = buildupStep <= 1;
     document.getElementById("buildupNext").disabled = buildupStep >= total;
     let last = buildupStep >= total;
-    document.getElementById("buildupListen").textContent = last ? "▶ Videodan dinle" : "🔊 Dinle";
+    let listen = document.getElementById("buildupListen");
+    listen.textContent = last ? "▶ Videodan dinle" : "Dinle";
+    listen.classList.toggle("ico-speaker", !last);
     document.getElementById("buildupHint").textContent = last
         ? "Cümlenin tamamı. Videodan dinle ve aynı hız ve tonlamayla söyle."
         : "Sarı parça yeni eklendi. Koyu yazılan kısmı dinle, yüksek sesle tekrar et, sonra bir parça daha ekle.";
@@ -105,7 +107,7 @@ function buildupSpeak() {
         return;
     }
     let speech = new SpeechSynthesisUtterance(buildupText());
-    speech.lang = "en-US";
+    speech.lang = langTts();
     speech.rate = 0.9;
     speechSynthesis.speak(speech);
 }

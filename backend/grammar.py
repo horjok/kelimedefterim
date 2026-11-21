@@ -1,11 +1,12 @@
 """
 Videodaki gramer konularını Gemini API ile çıkarır (istek katmanı: gemini.py).
 Sonuçlar önbellekte (storage: cache/grammar.json ya da Redis) saklanır: aynı video için API ikinci kez çağrılmaz.
+Diller (20 Kasım 2026): her dilin kendi istemi (PROMPTS) ve önbelleği var (İspanyolca es/grammar.json).
 """
 
 import threading
 
-from . import storage
+from . import languages, storage
 from .gemini import GeminiError, as_text, generate_json
 
 GrammarError = GeminiError  # eski ad; app.py bu adla yakalar
@@ -15,21 +16,44 @@ LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
 MAX_LINES = 160    # çok uzun videolarda yalnızca baştaki bu kadar cümle gönderilir
 MAX_CHARS = 14000  # istek metni için üst sınır
-cache_lock = threading.Lock()
+cache_lock = threading.RLock()  # save_cache kilit içinde cache_for çağırır
 
 
 # ===== Önbellek =====
 
-def load_cache():
-    data = storage.read(CACHE_FILE, {})
+def load_cache(lang="en"):
+    data = storage.read(languages.storage_name(lang, CACHE_FILE), {})
     return data if isinstance(data, dict) else {}
 
 
-grammar_cache = load_cache()  # video id -> {"model": ..., "topics": [...]}
+grammar_cache = load_cache()  # İngilizce: video id -> {"model": ..., "topics": [...]}
+caches = {"en": grammar_cache}  # diğer diller ilk istekte yüklenir
 
 
-def save_cache():
-    storage.merge_write(CACHE_FILE, grammar_cache)
+def cache_for(lang):
+    with cache_lock:
+        if lang not in caches:
+            caches[lang] = load_cache(lang)
+        return caches[lang]
+
+
+def save_cache(lang="en"):
+    storage.merge_write(languages.storage_name(lang, CACHE_FILE), cache_for(lang))
+
+
+def forget(video_id, lang="en"):
+    """Videonun kayıtlı gramer analizini bellekten ve depodan siler (şarkının sözü değişince eski analiz kalmasın).
+    save_cache birleştirerek yazdığı için anahtarı yalnızca bellekten silmek yetmez: depo yeniden yazılır."""
+    with cache_lock:
+        cache = cache_for(lang)
+        name = languages.storage_name(lang, CACHE_FILE)
+        stored = storage.read(name, {})
+        stored = stored if isinstance(stored, dict) else {}
+        if cache.pop(video_id, None) is None and video_id not in stored:
+            return
+        stored.pop(video_id, None)
+        stored.update(cache)  # bellekteki öteki analizler korunur
+        storage.write(name, stored)
 
 
 # ===== İstem =====
@@ -58,8 +82,65 @@ Rules:
 Transcript:
 """
 
+PROMPT_ES = """You are a Spanish grammar teacher for Turkish-speaking learners (around B1 level).
+Below is a numbered transcript of a Spanish video. It may be automatic captions without punctuation.
+Find the 5 to 8 most useful grammar points that actually occur in it.
+Prefer structures a learner can reuse (ser and estar, preterite and imperfect, the perfect tense, the subjunctive,
+object pronouns, reflexive verbs, por and para, periphrases like ir a / estar + gerundio / acabar de,
+comparatives, relative clauses, conditionals, gustar-type verbs, the impersonal se, etc.).
+Skip trivial points like articles on their own.
 
-def build_prompt(lines):
+Return ONLY a JSON object with this exact shape:
+{"topics": [{
+  "title": "Spanish name of the grammar point",
+  "titleTr": "Turkish name",
+  "level": "one of A1, A2, B1, B2, C1, C2",
+  "pattern": "short formula, e.g. haber + participio",
+  "explanation": "2-3 sentences in Turkish: when and why it is used",
+  "tip": "one sentence in Turkish: a common mistake Turkish speakers make, or a memory aid",
+  "examples": [{"line": 12, "phrase": "exact words copied from that line that show the structure", "note": "short Turkish note about this example"}]
+}]}
+
+Rules:
+- "line" must be a line number from the transcript, and "phrase" must appear word for word in that line.
+- Give 2 to 4 examples per topic, from different lines when possible.
+- explanation, tip and note must be written in Turkish. title and pattern stay in Spanish.
+
+Transcript:
+"""
+
+PROMPT_DE = """You are a German grammar teacher for Turkish-speaking learners (around B1 level).
+Below is a numbered transcript of a German video. It may be automatic captions without punctuation.
+Find the 5 to 8 most useful grammar points that actually occur in it.
+Prefer structures a learner can reuse (the Perfekt with haben or sein, the Präteritum of common verbs, modal verbs,
+separable verbs, verb position in subordinate clauses with weil, dass, wenn, ob, cases after prepositions,
+two-way prepositions, adjective endings, reflexive verbs, the passive, Konjunktiv II with würde / hätte / wäre,
+relative clauses, zu + infinitive, comparatives, etc.).
+Skip trivial points like articles on their own.
+
+Return ONLY a JSON object with this exact shape:
+{"topics": [{
+  "title": "German name of the grammar point",
+  "titleTr": "Turkish name",
+  "level": "one of A1, A2, B1, B2, C1, C2",
+  "pattern": "short formula, e.g. haben / sein + Partizip II",
+  "explanation": "2-3 sentences in Turkish: when and why it is used",
+  "tip": "one sentence in Turkish: a common mistake Turkish speakers make, or a memory aid",
+  "examples": [{"line": 12, "phrase": "exact words copied from that line that show the structure", "note": "short Turkish note about this example"}]
+}]}
+
+Rules:
+- "line" must be a line number from the transcript, and "phrase" must appear word for word in that line.
+- Give 2 to 4 examples per topic, from different lines when possible.
+- explanation, tip and note must be written in Turkish. title and pattern stay in German.
+
+Transcript:
+"""
+
+PROMPTS = {"en": PROMPT, "es": PROMPT_ES, "de": PROMPT_DE}
+
+
+def build_prompt(lines, lang="en"):
     rows = []
     size = 0
     for number, line in enumerate(lines[:MAX_LINES], start=1):
@@ -68,7 +149,7 @@ def build_prompt(lines):
         if size > MAX_CHARS:
             break
         rows.append(row)
-    return PROMPT + "\n".join(rows)
+    return PROMPTS[lang] + "\n".join(rows)
 
 
 # ===== Yanıtı doğrulama =====
@@ -119,20 +200,21 @@ def clean_topics(raw, lines):
 
 # ===== Dışarıya açılan fonksiyon =====
 
-def analyze_grammar(video_id, lines):
+def analyze_grammar(video_id, lines, lang="en"):
     """Videonun gramer konuları. Önbellekte varsa oradan; yoksa Gemini'ye sorar. Hata: GrammarError."""
-    if video_id in grammar_cache:
-        return grammar_cache[video_id]
-    stored = storage.read(CACHE_FILE, {})  # başka bir sunucu kopyası (Vercel) çözümlemiş olabilir
+    cache = cache_for(lang)
+    if video_id in cache:
+        return cache[video_id]
+    stored = storage.read(languages.storage_name(lang, CACHE_FILE), {})  # başka bir sunucu kopyası (Vercel) çözümlemiş olabilir
     if isinstance(stored, dict) and video_id in stored:
-        grammar_cache[video_id] = stored[video_id]
+        cache[video_id] = stored[video_id]
         return stored[video_id]
-    raw, model = generate_json(build_prompt(lines))
+    raw, model = generate_json(build_prompt(lines, lang))
     topics = clean_topics(raw, lines)
     if not topics:
         raise GrammarError("Gemini bu videoda kullanılabilir bir gramer konusu döndürmedi. Yeniden dene.", 502, "no_topics")
     data = {"model": model, "topics": topics, "truncated": len(lines) > MAX_LINES}
     with cache_lock:
-        grammar_cache[video_id] = data
-        save_cache()
+        cache[video_id] = data
+        save_cache(lang)
     return data

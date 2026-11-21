@@ -58,7 +58,7 @@ function grammarLoad() {
     document.getElementById("grammarRetry").hidden = true;
     grammarSetStatus("Gramer konuları çıkarılıyor… Genelde 5-10 saniye.");
 
-    fetch(`/api/grammar?url=${encodeURIComponent(grammarUrl)}`)
+    fetch(apiUrl(`/api/grammar?url=${encodeURIComponent(grammarUrl)}`))
         .then(function (response) {
             return response.json().then(function (data) {
                 if (!response.ok) {

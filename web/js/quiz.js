@@ -23,10 +23,15 @@ function ieltsNorm(text) {
     return String(text).replace(/’/g, "'").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+// Vurgu işaretlerini atar (á → a, ñ → n): yalnızca "neredeyse doğru" uyarısı için
+function ieltsBare(text) {
+    return ieltsNorm(text).normalize("NFD").replace(/\p{M}/gu, "");
+}
+
 // Sunucuya JSON isteği. Hata olursa Türkçe mesajlı Error (error.code: no_key, quota, ...)
 function ieltsApi(path, body) {
     let options = body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
-    return fetch(path, options).then(function (response) {
+    return fetch(apiUrl(path), options).then(function (response) {
         return response.json().then(function (data) {
             if (!response.ok) {
                 let error = new Error(data.error || `Sunucu hatası (kod ${response.status}).`);
@@ -120,7 +125,10 @@ function ieltsRenderQuestions(container, questions, extra) {
                 }
                 let feedback = ieltsElement("div", "ielts-feedback");
                 let line = ieltsElement("p", right ? "ok" : "error");
-                line.append(right ? "✓ Doğru. " : (answers[index].trim() ? "✗ Yanlış. " : "✗ Boş. "), "Cevap: ", ieltsElement("b", "", question.answer));
+                // Yalnızca vurgu işareti farklıysa (hablo / habló) yanlış sayılır ama bunu söyleriz: anlam değişebilir
+                let accentOnly = !right && answers[index].trim() && accepted.map(ieltsBare).includes(ieltsBare(answers[index]));
+                let verdict = right ? "✓ Doğru. " : accentOnly ? "✗ Vurgu işareti eksik ya da yanlış (´ anlamı değiştirebilir). " : (answers[index].trim() ? "✗ Yanlış. " : "✗ Boş. ");
+                line.append(verdict, "Cevap: ", ieltsElement("b", "", question.answer));
                 feedback.appendChild(line);
                 if (question.explanation) {
                     feedback.appendChild(ieltsElement("p", "ielts-explanation", question.explanation));

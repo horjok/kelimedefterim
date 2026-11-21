@@ -29,14 +29,16 @@
     <main class="main">
         <section id="video" class="section">
             <h2><mark>Video</mark></h2>
-            <p class="section-hint">Altyazılı bir YouTube videosunun linkini yapıştır. Cümleler ve her kelimenin telaffuzu (IPA) altta çıkar.</p>
+            <p class="section-hint">Altyazılı bir YouTube videosunun ya da bir Spotify şarkısının linkini yapıştır. Cümleler (şarkıda sözler) ve her kelimenin telaffuzu (IPA) altta çıkar.</p>
 
             <form class="panel video-form" id="videoForm">
                 <div class="inline-form">
-                    <input type="text" id="videoUrl" placeholder="https://www.youtube.com/watch?v=..." aria-label="YouTube linki" autocomplete="off">
+                    <input type="text" id="videoUrl" placeholder="YouTube ya da Spotify şarkı linki" aria-label="YouTube ya da Spotify şarkı linki" autocomplete="off">
                     <button type="submit" id="videoButton">Getir</button>
                 </div>
                 <p id="videoResult"></p>
+                <!-- Şarkı: birden çok söz bulunursa seçim listesi (video.js renderSongChoices) -->
+                <div class="song-choices" id="songChoices" hidden></div>
             </form>
 
             <div class="video-layout" id="videoLayout" data-mode="lines" hidden>
@@ -62,8 +64,20 @@
                 <div class="video-main">
                     <!-- Telefonda video + shadowing çubuğu birlikte üstte sabit kalır -->
                     <div class="player-wrap">
-                        <div class="player-box">
+                        <div class="player-box" id="playerBox">
                             <div id="player"></div>
+                        </div>
+                        <!-- Şarkı: kapak + "Sanatçı – Şarkı", Spotify gömülü oynatıcısı (spotify-player.js) ve kısa not -->
+                        <div class="song-box" id="songBox" hidden>
+                            <div class="song-head">
+                                <img class="song-cover" id="songCover" alt="" width="44" height="44" hidden>
+                                <p class="song-title" id="songTitle"></p>
+                            </div>
+                            <div class="spotify-player" id="spotifyPlayer"></div>
+                            <div class="song-foot">
+                                <p class="song-note" id="songNote" aria-live="polite"></p>
+                                <button type="button" class="mini" id="songOtherLyrics" hidden>Başka söz seç</button>
+                            </div>
                         </div>
                         <!-- Shadowing: sadece Transkript modunda görünür (video.js setMode) -->
                         <div class="shadow-bar" id="shadowBar" role="group" aria-label="Shadowing kontrolleri">
@@ -165,7 +179,7 @@
                             <p class="buildup-text" id="buildupText" aria-live="polite"></p>
                             <div class="buildup-actions">
                                 <button type="button" class="mini" id="buildupPrev">◀ Geri</button>
-                                <button type="button" class="mini" id="buildupListen">🔊 Dinle</button>
+                                <button type="button" class="mini ico-speaker" id="buildupListen">Dinle</button>
                                 <button type="button" class="mini" id="buildupNext">Parça ekle ▶</button>
                                 <button type="button" class="mini" id="buildupEnd">Kapat</button>
                             </div>
@@ -226,7 +240,7 @@
                 <!-- Dikte modunda cümleler noktalarla maskelenir (#maskView): cevaplar transkriptten okunamasın -->
                 <article class="panel transcript" id="transcript" role="tabpanel">
                     <div id="linesView" aria-labelledby="modeLines">
-                        <p class="transcript-hint">Bir cümleye dokun, video oradan oynasın.</p>
+                        <p class="transcript-hint" id="linesHint">Bir cümleye dokun, video oradan oynasın.</p>
                         <div id="lines"></div>
                     </div>
 
@@ -267,8 +281,10 @@
 </div>
 
 <script src="js/helpers.js"></script>
+<script src="js/lang.js"></script>
 <script src="js/course.js"></script>
 <script src="js/store.js"></script>
+<script src="js/spotify-player.js"></script>
 <script src="js/video.js"></script>
 <script src="js/grammar.js"></script>
 <script src="js/buildup.js"></script>

@@ -1,7 +1,25 @@
-// ===== YouTube videosu + transkript + IPA telaffuz =====
+// ===== YouTube videosu (ya da Spotify şarkısı) + transkript + IPA telaffuz =====
 // Transkripti yerel sunucu (server.py) getirir: /api/transcript?url=...
+// Şarkıda sözler /api/song?url=<spotify linki> ile gelir, aynı biçimdedir; oynatıcı spotify-player.js'teki SpotifyPlayer.
 
-let player = null;
+let player = null;          // açık oynatıcı: YT.Player ya da şarkıda SpotifyPlayer (ikisi de aynı yöntemler)
+let youtubePlayer = null;   // YouTube oynatıcısı bir kez kurulur; şarkıdan dönünce yeniden kullanılır
+let playerTimersStarted = false;  // followVideo / shadowTick zamanlayıcıları yalnızca bir kez kurulur
+let transcriptRequest = 0;  // geç gelen eski bir yanıt yeni videonun / şarkının üstüne yazmasın
+
+// ----- Şarkı durumu -----
+let songMode = false;       // açık olan bir Spotify şarkısı mı
+let songSynced = true;      // şarkıda satır takibi çalışıyor mu (Spotify girişi yoksa 30 sn önizleme: false)
+let songPending = false;    // yeni şarkının oynatıcısı kuruldu ama sözleri henüz ekrandakilerin yerine geçmedi
+let songPlayer = null;      // açık şarkının SpotifyPlayer'ı (player şarkıda bunu gösterir)
+let songParked = null;      // söz seçimi beklenirken önceki şarkının oynatıcısı gizli bekler ("Vazgeç" geri getirir)
+let songData = null;        // açık şarkının yanıtı (başlık, kapak, lrclibId)
+let songLink = "";          // açık şarkının linki ("Başka söz seç" için)
+let songLinkedStart = 0;    // video.html?v=sp:<id>&t=<sn> ile gelindiyse şarkının bekleyeceği saniye
+let songLinkedTrack = "";   // o adresteki şarkının Spotify kimliği (başka şarkı açılırsa songLinkedStart atılır)
+const SONG_PREVIEW_MAX = 35;  // oynatıcının bildirdiği süre bundan kısaysa girişsiz önizleme sayılır (sn)
+const SONG_PREVIEW_NOTE = "Tam şarkı ve satır takibi için tarayıcıda Spotify'a giriş yap; şu an 30 saniyelik önizleme çalıyor.";
+const SONG_NO_PLAYER_NOTE = "Spotify oynatıcısı yüklenemedi; sözler, kelimeler ve dikte metni yine çalışır. Sözler: LRCLIB";
 let lines = [];          // sunucudan gelen cümleler
 let lineElements = [];   // ekrandaki cümle satırları
 let activeIndex = -1;
@@ -30,7 +48,7 @@ function setStatus(message, className) {
 
 function saveLastUrl(url) {
     try {
-        localStorage.setItem("lastVideoUrl", url);
+        localStorage.setItem(langKey("lastVideoUrl"), url);
     } catch (error) {
         // Gizli pencerede localStorage kapalı olabilir; önemli değil
     }
@@ -38,7 +56,7 @@ function saveLastUrl(url) {
 
 function loadLastUrl() {
     try {
-        return localStorage.getItem("lastVideoUrl") || "";
+        return localStorage.getItem(langKey("lastVideoUrl")) || "";
     } catch (error) {
         return "";
     }
@@ -102,18 +120,30 @@ function renderLines() {
 
 // ===== Video oynatıcı =====
 
+function startPlayerTimers() {
+    if (playerTimersStarted) {
+        return;
+    }
+    playerTimersStarted = true;
+    setInterval(followVideo, 250);
+    setInterval(shadowTick, 100);  // cümle sonunda durdurma için daha sık bakılır
+}
+
 async function showVideo(videoId) {
     await youtubeReady;
+    if (songMode || songPending) {
+        return;  // beklerken bir şarkı açıldı ya da açılıyor
+    }
+    showPlayerKind("youtube");
 
-    if (player === null) {
-        player = new YT.Player("player", {
+    if (youtubePlayer === null) {
+        youtubePlayer = new YT.Player("player", {
             videoId: videoId,
             // start: kayıtlı kelimeden gelindiyse video o saniyede bekler (aşağıda linkedStart)
             playerVars: { playsinline: 1, rel: 0, origin: location.origin, start: linkedStart },
             events: {
                 onReady: function () {
-                    setInterval(followVideo, 250);
-                    setInterval(shadowTick, 100);  // cümle sonunda durdurma için daha sık bakılır
+                    startPlayerTimers();
                     applyShadowSpeed();
                 },
                 onStateChange: function () {
@@ -121,13 +151,67 @@ async function showVideo(videoId) {
                 }
             }
         });
+        player = youtubePlayer;
     } else {
+        player = youtubePlayer;
         player.cueVideoById(videoId);
     }
 }
 
+// Oynatıcı alanında YouTube kutusu mu, Spotify kutusu mu görünsün.
+// YouTube'a dönülünce Spotify oynatıcısı kapatılır; şarkıya geçilince YouTube videosu duraklatılır.
+function showPlayerKind(kind) {
+    let isSong = kind === "song";
+    if (isSong) {
+        if (youtubePlayer !== null && typeof youtubePlayer.pauseVideo === "function") {
+            youtubePlayer.pauseVideo();
+        }
+    } else {
+        if (songPlayer !== null) {
+            songPlayer.destroy();
+            songPlayer = null;
+        }
+        if (songParked !== null) {
+            songParked.destroy();
+            songParked = null;
+        }
+        songPending = false;
+        player = youtubePlayer;
+        hideSongChoices();
+    }
+    let youtubeBox = document.getElementById("playerBox");
+    let songBox = document.getElementById("songBox");
+    if (youtubeBox) youtubeBox.hidden = isSong;
+    if (songBox) songBox.hidden = !isSong;
+}
+
+// Şarkı açık ama Spotify girişi yok: 30 sn önizleme, satır takibi kapalı
+function songPreview() {
+    return songMode && !songSynced;
+}
+
+// Satır takibi, cümleyi çalma ve dikte kilidi çalışabilir mi (dictation.js de bakar)
+function playbackAllowed() {
+    return !songPending && !songPreview();
+}
+
+// Önizlemede satıra ya da kelimeye dokununca: oynatma yok, giriş notu dikkat çeksin
+function flashSongNote() {
+    let note = document.getElementById("songNote");
+    if (!note || !songMode) {
+        return;
+    }
+    note.classList.remove("attention");
+    void note.offsetWidth;  // sınıf yeniden eklenince vurgu yeniden başlasın
+    note.classList.add("attention");
+}
+
 function seekTo(seconds) {
     if (player === null || typeof player.seekTo !== "function") {
+        return;
+    }
+    if (!playbackAllowed()) {
+        flashSongNote();
         return;
     }
     player.seekTo(seconds, true);
@@ -136,6 +220,15 @@ function seekTo(seconds) {
 
 // keepRepeats: aynı cümlenin sıradaki tekrarı çalınıyorsa tekrar sayacı sıfırlanmaz
 function playFrom(index, keepRepeats) {
+    if (!playbackAllowed()) {
+        // Şarkı önizlemesi: satır yalnızca cümle kartına alınır (çeviri, kayıt, sondan başa çalışır), çalınmaz
+        if (songPreview() && lines[index]) {
+            shadowCurrent = index;
+            renderShadowCard();
+            flashSongNote();
+        }
+        return;
+    }
     lastUserScroll = 0;  // tıklayınca otomatik takip hemen geri gelsin
     shadowCurrent = index;
     shadowEnded = false;
@@ -162,7 +255,7 @@ function findLineAt(seconds) {
 }
 
 function followVideo() {
-    if (lines.length === 0 || typeof player.getCurrentTime !== "function") {
+    if (lines.length === 0 || !playerReady() || !playbackAllowed()) {
         return;
     }
     let index = findLineAt(player.getCurrentTime());
@@ -244,7 +337,7 @@ async function fetchTranslation(text) {
     if (translationCache.has(text)) {
         return translationCache.get(text);
     }
-    let response = await fetch(`/api/translate?text=${encodeURIComponent(text)}`);
+    let response = await fetch(apiUrl(`/api/translate?text=${encodeURIComponent(text)}`));
     let data = await response.json();
     if (!response.ok) {
         throw new Error(data.error || `Sunucu hatası (kod ${response.status}).`);
@@ -302,7 +395,7 @@ function shadowAdvance() {
 }
 
 function shadowTick() {
-    if (!shadowActive() || lines.length === 0 || !playerReady()) {
+    if (!shadowActive() || lines.length === 0 || !playerReady() || !playbackAllowed()) {
         return;
     }
     if (Date.now() < shadowSeekGuard) {
@@ -646,7 +739,7 @@ document.addEventListener("keydown", function (event) {
     } else if (event.key === "r" || event.key === "R") {
         event.preventDefault();
         shadowGo(Math.max(0, shadowCurrent));
-    } else if (event.key === " " && !target.closest("button")) {
+    } else if (event.key === " " && !target.closest("button") && playbackAllowed()) {
         event.preventDefault();  // sayfa kaymasın
         shadowTogglePlay();
     }
@@ -696,14 +789,14 @@ function noteUserScroll() {
 const MODES = ["lines", "dictation", "vocab", "grammar"];
 
 function setMode(name, scroll) {
-    if (!MODES.includes(name)) {
+    if (!MODES.includes(name) || (name === "grammar" && !langHas("grammar"))) {
         name = "lines";
     }
     let previousMode = currentMode;
     currentMode = name;
     document.getElementById("videoLayout").dataset.mode = name;  // CSS yerleşimi buna göre değişir
     let wasShadow = previousMode === "lines" || previousMode === "grammar";
-    document.getElementById("shadowBar").hidden = !shadowActive();
+    document.getElementById("shadowBar").hidden = !shadowActive() || songPreview();
     document.getElementById("shadowCard").hidden = !shadowActive();
     document.getElementById("grammarView").hidden = name !== "grammar";
     if (name === "grammar" && typeof grammarOpen === "function") {
@@ -748,6 +841,9 @@ document.querySelectorAll(".mode").forEach(function (button) {
     button.addEventListener("click", function () { setMode(button.dataset.mode, true); });
 });
 
+// Seçili dilde video gramer analizi yoksa (İspanyolca, şimdilik) Gramer modu gizlenir
+document.getElementById("modeGrammar").hidden = !langHas("grammar");
+
 // Son kullanılan mod hatırlansın
 let savedMode = "lines";
 try { savedMode = localStorage.getItem("videoMode") || "lines"; } catch (error) { }
@@ -771,6 +867,9 @@ function groupItems(group) {
 let currentVideoId = "";  // loadTranscript doldurur; kayıtlı kelime hangi videodan geldiğini bilsin
 
 function videoTitle() {
+    if (songMode && songData !== null) {
+        return songData.title || "";  // "Sanatçı – Şarkı" (oynatıcı yüklenemese de)
+    }
     try {
         return player.getVideoData().title || "";
     } catch (error) {
@@ -993,7 +1092,8 @@ function renderVocabList() {
 function renderLevelChips() {
     let chips = document.getElementById("levelChips");
     chips.innerHTML = "";
-    let groups = [...Object.keys(vocab.levels), "phrasal"];
+    let groups = [...Object.keys(vocab.levels)];
+    if (langHas("phrasal")) groups.push("phrasal");  // İspanyolcada phrasal verb yok
     if (vocab.basic) groups.push("basic");
     let labels = { phrasal: "Phrasal verbs", basic: "Temel" };
 
@@ -1034,7 +1134,7 @@ function loadVocab(url) {
     let request = ++vocabRequest;
     resetVocab("Kelimeler seviyelere ayrılıyor ve Türkçeye çevriliyor...");
 
-    fetch(`/api/vocab?url=${encodeURIComponent(url)}`)
+    fetch(apiUrl(`/api/vocab?url=${encodeURIComponent(url)}`))
         .then(function (response) {
             return response.json().then(function (data) {
                 if (!response.ok) {
@@ -1073,8 +1173,11 @@ function loadVocab(url) {
                 status.className = "transcript-hint error";
             } else {
                 let basicCount = (vocab.basic || []).length;
-                status.textContent = `${total} öğrenmeye değer kelime, ${vocab.phrasal.length} phrasal verb. ` +
-                    `${basicCount} çok yaygın kelime "Temel" grubuna ayrıldı. Karta dokununca video kelimenin ilk geçtiği yere gider.`;
+                let phrasalText = langHas("phrasal") ? `, ${vocab.phrasal.length} phrasal verb` : "";
+                let tapText = !songMode ? " Karta dokununca video kelimenin ilk geçtiği yere gider."
+                    : songSynced ? " Karta dokununca şarkı kelimenin ilk geçtiği yerden çalar." : "";
+                status.textContent = `${total} öğrenmeye değer kelime${phrasalText}. ` +
+                    `${basicCount} çok yaygın kelime "Temel" grubuna ayrıldı.${tapText}`;
             }
             renderLevelChips();
             renderVocabList();
@@ -1094,77 +1197,528 @@ function loadVocab(url) {
 
 // ===== Linki gönderme =====
 
+// Ağ ya da sunucu hatasını kullanıcıya gösterilecek cümleye çevirir
+function requestErrorMessage(error) {
+    if (error.name === "TypeError" || error.name === "SyntaxError") {
+        return "Sunucuya ulaşılamadı. Terminalde \"python server.py\" çalışıyor mu? Sayfayı http://localhost:8000 adresinden aç.";
+    }
+    return error.message;
+}
+
+async function fetchJson(url) {
+    let response = await fetch(url);
+    let data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error || `Sunucu hatası (kod ${response.status}).`);
+    }
+    return data;
+}
+
+// YouTube videosu da şarkı da gelen transkripti aynı yoldan ekrana koyar
+function applyTranscript(data, url) {
+    lines = data.lines;
+    currentVideoId = data.videoId;
+    loadNotes(data.videoId);
+    if (typeof grammarReset === "function") {
+        grammarReset(url);
+        if (currentMode === "grammar") {
+            grammarOpen();
+        }
+    }
+    if (typeof dictationSetLines === "function") {
+        dictationSetLines(lines, data.videoId);
+    }
+    renderLines();
+    document.getElementById("videoLayout").hidden = false;
+    document.getElementById("transcript").scrollTop = 0;
+    saveLastUrl(url);
+    loadVocab(url);
+}
+
 function loadTranscript(url) {
     let button = document.getElementById("videoButton");
 
     if (url === "") {
-        setStatus("Önce bir YouTube linki yapıştır.", "error");
+        setStatus("Önce bir YouTube ya da Spotify şarkı linki yapıştır.", "error");
         return;
     }
 
+    let request = ++transcriptRequest;
     button.disabled = true;
     if (typeof dictationReset === "function") {
         dictationReset();
     }
     setStatus("Transkript getiriliyor...", "");
 
-    fetch(`/api/transcript?url=${encodeURIComponent(url)}`)
-        .then(function (response) {
-            return response.json().then(function (data) {
-                if (!response.ok) {
-                    throw new Error(data.error || `Sunucu hatası (kod ${response.status}).`);
-                }
-                return data;
-            });
-        })
+    fetchJson(apiUrl(`/api/transcript?url=${encodeURIComponent(url)}`))
         .then(function (data) {
+            if (request !== transcriptRequest) {
+                return;  // bu arada başka bir link gönderildi
+            }
             if (data.lines.length === 0) {
                 throw new Error("Transkript boş geldi.");
             }
-            lines = data.lines;
-            currentVideoId = data.videoId;
-            loadNotes(data.videoId);
-            if (typeof grammarReset === "function") {
-                grammarReset(url);
-                if (currentMode === "grammar") {
-                    grammarOpen();
-                }
-            }
-            if (typeof dictationSetLines === "function") {
-                dictationSetLines(lines, data.videoId);
-            }
-            renderLines();
-            document.getElementById("videoLayout").hidden = false;
-            document.getElementById("transcript").scrollTop = 0;
+            songMode = false;
+            songSynced = true;
+            songData = null;
+            songLink = "";
+            showPlayerKind("youtube");  // açık bir şarkı varsa oynatıcısı hemen kapanır
+            applyTranscript(data, url);
             showVideo(data.videoId);
-            saveLastUrl(url);
-            loadVocab(url);
+            applySongUi();
 
             let kind = data.generated ? "otomatik altyazı" : "el ile yazılmış altyazı";
             setStatus(`${lines.length} satır yüklendi (${kind}).`, "ok");
         })
         .catch(function (error) {
-            let message = error.message;
-            if (error.name === "TypeError" || error.name === "SyntaxError") {
-                message = "Sunucuya ulaşılamadı. Terminalde \"python server.py\" çalışıyor mu? Sayfayı http://localhost:8000 adresinden aç.";
+            if (request !== transcriptRequest) {
+                return;
             }
-            setStatus(message, "error");
+            setStatus(requestErrorMessage(error), "error");
             console.error("Transkript hatası:", error);
         })
         .finally(function () {
-            button.disabled = false;
+            if (request === transcriptRequest) {
+                button.disabled = false;
+            }
         });
 }
 
+
+// ===== Şarkı: Spotify linki → LRCLIB sözleri + Spotify gömülü oynatıcısı =====
+
+function formatDuration(seconds) {
+    return seconds > 0 ? formatTime(Math.round(seconds)) : "";
+}
+
+function hideSongChoices() {
+    let box = document.getElementById("songChoices");
+    if (box) {
+        box.hidden = true;
+        box.replaceChildren();
+    }
+}
+
+// Birden çok söz bulununca: "Sanatçı · Albüm · m:ss" düğmeleri; seçilen &lyrics=<id> ile istenir.
+// replacing: "Başka söz seç" ile açıldı (seçim açık şarkının sözlerinin yerine geçer)
+function renderSongChoices(data, url, replacing) {
+    let box = document.getElementById("songChoices");
+    if (!box) {
+        return;
+    }
+    box.replaceChildren();
+    let head = document.createElement("p");
+    head.className = "song-choices-head";
+    head.textContent = replacing
+        ? "Hangi sözler doğru? Seçtiğin sürüm öncekinin yerine geçer."
+        : `“${data.title || "Bu şarkı"}” için birden çok söz bulundu. Şarkıya uyanı seç:`;
+    box.appendChild(head);
+
+    let list = document.createElement("div");
+    list.className = "song-choice-list";
+    for (let candidate of data.candidates || []) {
+        let choice = document.createElement("button");
+        choice.type = "button";
+        choice.className = "song-choice";
+        let parts = [candidate.artist, candidate.album, formatDuration(Number(candidate.duration) || 0)].filter(Boolean);
+        let label = document.createElement("span");
+        label.className = "song-choice-label";
+        label.textContent = parts.join(" · ") || candidate.track || `Söz #${candidate.id}`;
+        choice.appendChild(label);
+        if (candidate.track) {
+            choice.title = candidate.track;
+        }
+        if (replacing && songData && candidate.id === songData.lrclibId) {
+            choice.setAttribute("aria-current", "true");
+            let current = document.createElement("span");
+            current.className = "song-choice-current";
+            current.textContent = "şu anki";
+            choice.appendChild(current);
+        }
+        choice.addEventListener("click", function () {
+            loadSong(url, candidate.id);
+        });
+        list.appendChild(choice);
+    }
+    box.appendChild(list);
+
+    let cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "mini";
+    cancel.textContent = "Vazgeç";
+    cancel.addEventListener("click", cancelSongChoice);
+    box.appendChild(cancel);
+
+    box.hidden = false;
+    box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// Başlıkta kapak + "Sanatçı – Şarkı"
+function renderSongHeader(title, thumbnail) {
+    let titleBox = document.getElementById("songTitle");
+    if (titleBox) {
+        titleBox.textContent = title || "";
+        titleBox.parentElement.hidden = !title;  // başlık yokken boş satır yer kaplamasın
+    }
+    let cover = document.getElementById("songCover");
+    if (cover) {
+        let ok = typeof thumbnail === "string" && thumbnail.startsWith("https://");
+        cover.hidden = !ok;
+        if (ok) {
+            cover.src = thumbnail;
+        } else {
+            cover.removeAttribute("src");
+        }
+    }
+}
+
+// Önizleme mi (girişsiz 30 sn), tam şarkı mı: süre bilinmiyorsa eşzamanlı sayılır.
+// Oynatıcı hiç yüklenemediyse oynatma yok: önizleme gibi davranılır.
+function songIsSynced() {
+    if (songPlayer === null) {
+        return false;
+    }
+    let length = songPlayer.duration();
+    let lastStart = lines.length ? lines[lines.length - 1].start : 0;
+    return length === 0 || length > SONG_PREVIEW_MAX || lastStart < 30;
+}
+
+// songMode / songSynced değişince: şarkıya özgü düğmeler, notlar, hız seçimleri ve dikte oynatması
+function applySongUi() {
+    let preview = songPreview();
+    // Spotify oynatıcısında hız ayarı yok: şarkıda hız seçimleri gizlenir
+    for (let id of ["shadowSpeed", "dictationSpeed"]) {
+        let select = document.getElementById(id);
+        let label = select ? select.closest("label") : null;
+        if (label) {
+            label.hidden = songMode;
+        }
+    }
+    let bar = document.getElementById("shadowBar");
+    if (bar) {
+        bar.hidden = !shadowActive() || preview;
+    }
+    let note = document.getElementById("songNote");
+    if (note) {
+        note.textContent = !songMode ? ""
+            : songPlayer === null ? SONG_NO_PLAYER_NOTE
+            : preview ? SONG_PREVIEW_NOTE : "Sözler: LRCLIB";
+        note.classList.toggle("preview", preview);
+        note.classList.remove("attention");
+    }
+    let other = document.getElementById("songOtherLyrics");
+    if (other) {
+        other.hidden = !songMode;
+    }
+    let hint = document.getElementById("linesHint");
+    if (hint) {
+        hint.textContent = !songMode ? "Bir cümleye dokun, video oradan oynasın."
+            : preview ? "Satır takibi kapalı: sözleri oku, satıra dokununca cümle kartına gelir."
+            : "Bir satıra dokun, şarkı oradan çalsın.";
+    }
+    if (preview) {
+        shadowWaitUntil = 0;
+        highlight(-1);
+    }
+    if (typeof dictationSetPlayback === "function") {
+        dictationSetPlayback(!preview);
+    }
+}
+
+// Spotify oynatıcısının süresi sonradan öğrenildiyse (ya da değiştiyse) önizleme kararı yenilenir
+function songDurationKnown() {
+    if (!songMode || player !== songPlayer || songPlayer === null) {
+        return;
+    }
+    let synced = songIsSynced();
+    if (synced !== songSynced) {
+        songSynced = synced;
+        applySongUi();
+    }
+}
+
+// Spotify'dan oynatma durumu geldi: Oynat/Duraklat yazısı; önizleme bittiyse giriş notu dikkat çeker
+function songPlayerChanged() {
+    updateShadowBar();
+    if (songPreview() && songPlayer !== null && songPlayer.paused && songPlayer.length > 0
+        && songPlayer.position >= songPlayer.length - 1) {
+        flashSongNote();
+    }
+}
+
+// Yeni Spotify oynatıcısı "player" olur; eski oynatıcı kapanır.
+// choosing: söz seçimi bekleniyor (şarkı henüz açılmadı).
+// parkOld: eski oynatıcı açık şarkınınsa seçim bitene kadar gizli saklanır ("Vazgeç" onu geri getirir).
+function commitSongPlayer(fresh, choosing, parkOld) {
+    let old = songPlayer !== null && songPlayer !== fresh ? songPlayer : null;  // fresh null olabilir
+    if (old !== null) {
+        if (parkOld) {
+            if (songParked !== null && songParked !== old) {
+                songParked.destroy();
+            }
+            old.pauseVideo();
+            old.box.hidden = true;
+            songParked = old;
+        } else {
+            old.destroy();
+        }
+    }
+    if (!choosing && songParked !== null) {  // şarkı açıldı: saklanan eski oynatıcıya gerek kalmadı
+        if (songParked !== fresh) {
+            songParked.destroy();
+        }
+        songParked = null;
+    }
+    if (fresh !== null) {
+        fresh.box.hidden = false;
+        fresh.onChange = songPlayerChanged;
+        fresh.onDuration = songDurationKnown;
+    }
+    songPlayer = fresh;  // null: oynatıcı yüklenemedi, şarkı oynatıcısız açılır
+    player = fresh;
+    startPlayerTimers();
+}
+
+// Söz seçim listesinde "Vazgeç": yeni şarkı açılmadıysa önceki oynatıcı (şarkı ya da YouTube) geri gelir
+function cancelSongChoice() {
+    hideSongChoices();
+    setStatus("", "");
+    dropPendingSong();
+}
+
+// Bekleyen (sözü seçilmemiş) şarkıdan vazgeçilir: oynatıcısı kapanır, ekrandaki içeriğin oynatıcısı geri gelir.
+// "Vazgeç" ve loadSong'un hata yolu kullanır (liste kapandıysa sayfa bekleyen durumda takılı kalmasın).
+function dropPendingSong() {
+    if (!songPending) {
+        return;  // bekleyen şarkı yok ("Başka söz seç" listesi): açık şarkı aynen kalır
+    }
+    if (songParked !== null || songMode) {
+        // Ekranda açık bir şarkı var: onun oynatıcısı geri gelir (oynatıcısı hiç yüklenemediyse null)
+        if (songPlayer !== null) {
+            songPlayer.destroy();
+        }
+        songPlayer = songParked;
+        songParked = null;
+        if (songPlayer !== null) {
+            songPlayer.box.hidden = false;
+        }
+        player = songPlayer;
+        songPending = false;
+        if (songData !== null) {
+            renderSongHeader(songData.title, songData.thumbnail);
+        }
+    } else {
+        showPlayerKind("youtube");  // şarkı oynatıcısı kapanır, YouTube kutusu geri gelir
+        if (lines.length === 0) {
+            document.getElementById("videoLayout").hidden = true;
+        }
+    }
+}
+
+function applySong(data, url, fresh) {
+    commitSongPlayer(fresh, false, false);
+    showPlayerKind("song");
+    songMode = true;
+    songPending = false;
+    songData = data;
+    songLink = url;
+    if (fresh !== null) {
+        fresh.title = data.title || "";
+    }
+    hideSongChoices();
+    if (typeof dictationReset === "function") {
+        dictationReset();
+    }
+    applyTranscript(data, url);
+    songSynced = songIsSynced();
+    renderSongHeader(data.title, data.thumbnail);
+    applySongUi();
+
+    let message = `${lines.length} satır yüklendi (şarkı sözü).`;
+    setStatus(message, "ok");
+    if (data.languageWarning) {
+        let warning = document.createElement("span");
+        warning.className = "status-warn";
+        warning.textContent = `Bu şarkı ${langName()} görünmüyor; çalışılan dili kontrol et.`;
+        document.getElementById("videoResult").append(" ", warning);
+    }
+    if (songLinkedStart > 0) {
+        if (songSynced && fresh !== null) {
+            fresh.seekTo(songLinkedStart);  // kayıtlı kelimeden gelindi: o saniyede bekler
+        }
+        if (lines.length) {
+            // Oynatma başlamadan cümle kartı o saniyedeki cümlede dursun (yoksa ilk satırda kalır)
+            shadowCurrent = lineIndexAt(songLinkedStart);
+            highlight(shadowCurrent);
+            renderShadowCard();
+        }
+        songLinkedStart = 0;
+    }
+}
+
+// lyricsId: aday listesinden seçilen LRCLIB kaydı (yoksa sunucu kendisi seçer ya da liste döndürür)
+async function loadSong(url, lyricsId) {
+    let request = ++transcriptRequest;
+    let button = document.getElementById("videoButton");
+    let trackId = typeof spotifyTrackId === "function" ? spotifyTrackId(url) : null;
+    if (trackId !== songLinkedTrack) {
+        songLinkedStart = 0;  // adresteki saniye yalnızca adresteki şarkı için geçerli
+    }
+    hideSongChoices();
+    if (!trackId) {
+        setStatus("Yalnızca tek bir şarkının linkini yapıştır.", "error");
+        return;
+    }
+
+    let layout = document.getElementById("videoLayout");
+    // Hata olursa geri dönülecek görünüm
+    let previous = {
+        song: songPlayer,
+        songMode: songMode,
+        pending: songPending,
+        layoutHidden: layout.hidden
+    };
+    let reused = songPlayer !== null && !songPlayer.destroyed && songPlayer.trackId === trackId;
+    let fresh = reused ? songPlayer : null;
+    button.disabled = true;
+
+    try {
+        if (!reused) {
+            setStatus("Spotify oynatıcısı hazırlanıyor...", "");
+            songPending = true;  // ekrandaki eski satırlar yeni oynatıcıya göre takip edilmesin
+            layout.hidden = false;  // gömülü oynatıcı görünür bir yerde kurulmalı
+            if (previous.song !== null) {
+                previous.song.pauseVideo();
+                previous.song.box.hidden = true;  // eski şarkı, yenisi açılana kadar gizli bekler
+            }
+            showPlayerKind("song");
+            renderSongHeader("", "");
+            try {
+                fresh = await createSpotifyPlayer("spotifyPlayer", trackId);
+            } catch (playerError) {
+                // Oynatıcı yüklenemedi (ağ, engelleyici eklenti): sözler, kelimeler ve dikte metni yine açılır
+                console.warn("Spotify oynatıcısı:", playerError);
+                fresh = null;
+            }
+            if (request !== transcriptRequest) {
+                if (fresh !== null && fresh !== songPlayer) fresh.destroy();
+                return;
+            }
+        }
+
+        let query = `/api/song?url=${encodeURIComponent(url)}`;
+        if (lyricsId) {
+            query += `&lyrics=${encodeURIComponent(lyricsId)}`;
+        } else {
+            // Süre, sözlerin kendiliğinden seçilmesine yardım eder; önizlemede (≈30 sn) gönderilmez
+            // Gömülü oynatıcı ilk oynatmadan önce süre göndermez: başlamamışsa beklemeden bilinen süre (yoksa 0) kullanılır
+            let length = fresh === null ? 0 : (fresh.started ? await fresh.waitDuration(3000) : fresh.length);
+            if (request !== transcriptRequest) {
+                if (fresh !== null && fresh !== songPlayer) fresh.destroy();
+                return;
+            }
+            if (length > SONG_PREVIEW_MAX) {
+                query += `&duration=${Math.round(length * 10) / 10}`;
+            }
+        }
+        setStatus("Şarkı sözleri getiriliyor...", "");
+        let data = await fetchJson(apiUrl(query));
+        if (request !== transcriptRequest) {
+            if (fresh !== null && fresh !== songPlayer) fresh.destroy();
+            return;
+        }
+
+        if (data.choose) {
+            // Kullanıcı seçene kadar oynatıcı yeni şarkıda kalır (dinleyip karşılaştırabilsin)
+            let sameSong = songMode && songData !== null && songData.videoId === `sp:${trackId}`;
+            commitSongPlayer(fresh, true, previous.songMode && !previous.pending);
+            songPending = !sameSong;
+            renderSongHeader(data.title, data.thumbnail);
+            renderSongChoices(data, url, false);
+            setStatus("Bu şarkı için birden çok söz bulundu. Aşağıdan doğru olanı seç.", "");
+            return;
+        }
+        if (!Array.isArray(data.lines) || data.lines.length === 0) {
+            throw new Error("Şarkı sözleri boş geldi.");
+        }
+        applySong(data, url, fresh);
+    } catch (error) {
+        if (request !== transcriptRequest) {
+            return;
+        }
+        songLinkedStart = 0;
+        if (!reused) {
+            // Yeni oynatıcı kapanır, önceki görünüm geri gelir
+            if (fresh !== null && fresh !== songPlayer) {
+                fresh.destroy();
+            }
+            if (previous.song !== null && !previous.song.destroyed) {
+                previous.song.box.hidden = false;
+            }
+            showPlayerKind(previous.songMode || previous.pending ? "song" : "youtube");
+            songPending = previous.pending;
+            if (songData !== null) {
+                renderSongHeader(songData.title, songData.thumbnail);
+            }
+            layout.hidden = previous.layoutHidden;
+        }
+        // Liste başta kapandı: bekleyen bir söz seçimi varsa ondan vazgeçilir, önceki video ya da şarkı oynatılabilir kalır
+        dropPendingSong();
+        setStatus(requestErrorMessage(error), "error");
+        console.error("Şarkı hatası:", error);
+    } finally {
+        if (request === transcriptRequest) {
+            button.disabled = false;
+        }
+    }
+}
+
+// "Başka söz seç": açık şarkı için aday listesi (choose=1 önbelleği atlar, tek aday olsa da liste döner)
+async function songOtherLyrics() {
+    if (!songMode || !songLink) {
+        return;
+    }
+    let request = transcriptRequest;
+    let url = songLink;
+    let button = document.getElementById("songOtherLyrics");
+    button.disabled = true;
+    setStatus("Başka sözler aranıyor...", "");
+    try {
+        let data = await fetchJson(apiUrl(`/api/song?url=${encodeURIComponent(url)}&choose=1`));
+        if (request !== transcriptRequest) {
+            return;
+        }
+        if (!data.choose) {
+            // Sunucu liste yerine tek şarkı döndürdüyse onu tek aday olarak göster
+            data = { title: data.title, candidates: [{ id: data.lrclibId, artist: data.artist, track: data.track }] };
+        }
+        renderSongChoices(data, url, true);
+        setStatus("Listeden şarkıya uyan sözleri seç.", "");
+    } catch (error) {
+        if (request === transcriptRequest) {
+            setStatus(requestErrorMessage(error), "error");
+        }
+    } finally {
+        button.disabled = false;
+    }
+}
+
+document.getElementById("songOtherLyrics").addEventListener("click", songOtherLyrics);
+
 document.getElementById("videoForm").addEventListener("submit", function (event) {
     event.preventDefault();  // form sayfayı yenilemesin
-    loadTranscript(document.getElementById("videoUrl").value.trim());
+    let url = document.getElementById("videoUrl").value.trim();
+    if (typeof isSpotifyLink === "function" && isSpotifyLink(url)) {
+        loadSong(url);
+    } else {
+        loadTranscript(url);
+    }
 });
 
 document.getElementById("videoUrl").value = loadLastUrl();
 
 // Kartlar / Kelimeler / Kitaplık sayfasından gelen bağlantı: video.html?v=<id>&t=<saniye>
-// Video kendiliğinden yüklenir ve kelimenin geçtiği saniyede bekler.
+// Video kendiliğinden yüklenir ve kelimenin geçtiği saniyede bekler. Şarkıda id "sp:<spotify id>".
 let linkedStart = 0;
 {
     let params = new URLSearchParams(location.search);
@@ -1174,6 +1728,12 @@ let linkedStart = 0;
         let url = `https://www.youtube.com/watch?v=${linkedVideo}`;
         document.getElementById("videoUrl").value = url;
         loadTranscript(url);
+    } else if (/^sp:[A-Za-z0-9]{22}$/.test(linkedVideo)) {
+        songLinkedStart = Math.max(0, Math.floor(Number(params.get("t")) || 0));
+        songLinkedTrack = linkedVideo.slice(3);
+        let url = `https://open.spotify.com/track/${linkedVideo.slice(3)}`;
+        document.getElementById("videoUrl").value = url;
+        loadSong(url);
     }
 }
 

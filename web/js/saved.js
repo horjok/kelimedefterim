@@ -31,9 +31,10 @@ function savedVideoButton(entry) {
     if (!entry.videoId) {
         return null;
     }
-    let link = savedElement("a", "mini", "▶ Video");
+    let song = savedIsSong(entry);
+    let link = savedElement("a", "mini", song ? "▶ Şarkıda aç" : "▶ Video");
     link.href = savedVideoLink(entry);
-    link.title = "Kelimenin videoda geçtiği yeri aç";
+    link.title = song ? "Kelimenin şarkıda geçtiği yeri aç" : "Kelimenin videoda geçtiği yeri aç";
     return link;
 }
 
@@ -68,7 +69,13 @@ function savedVideoGroups(entries) {
         group.title = group.title || entry.videoTitle || "";
     }
     for (let group of groups.values()) {
-        group.title = group.id === "" ? "Elle eklenenler" : (group.title || `Video ${group.id}`);
+        if (group.id === "") {
+            group.title = "Elle eklenenler";
+        } else if (/^sp:/.test(group.id)) {
+            group.title = "♪ " + (group.title || "Şarkı");  // şarkı paketi: başlığın önünde ♪
+        } else {
+            group.title = group.title || `Video ${group.id}`;
+        }
     }
     return [...groups.values()];
 }
@@ -96,6 +103,7 @@ function savedShortTitle(title) {
 
 let studyQueue = [];        // sırayla sorulacak kartların anahtarları
 let studyRevealed = false;  // cevap gösterildi mi?
+let studySynOpen = null;    // eş anlamlıları açık olan kartın anahtarı
 let studyDone = 0;          // bu oturumda bitirilen kart sayısı
 let studyCram = false;      // "yine de hepsini çalış": zamanı gelmemiş kartlar da sorulur
 
@@ -147,7 +155,7 @@ function exampleHtml(entry) {
     let box = savedElement("p", "study-example");
     let text = entry.example;
     let escaped = entry.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    let match = entry.kind === "word" ? new RegExp(`\\b${escaped}[a-z]*`, "i").exec(text) : null;
+    let match = entry.kind === "word" ? new RegExp(`(?<!\\p{L})${escaped}\\p{L}*`, "iu").exec(text) : null;
     if (match) {
         box.append(`“${text.slice(0, match.index)}`, savedElement("mark", "", match[0]), `${text.slice(match.index + match[0].length)}”`);
     } else {
@@ -251,7 +259,7 @@ function renderStudy() {
     if (label) {
         meta.append(savedElement("span", "chip", label));
     }
-    card.append(meta, savedElement("p", "study-word", entry.word));
+    card.append(meta, savedElement("p", "study-word", savedHead(entry)));
     if (entry.ipa) {
         card.appendChild(savedElement("p", "study-ipa", `/${entry.ipa}/`));
     }
@@ -260,7 +268,15 @@ function renderStudy() {
     }
 
     // Video bağlantısı: cümleyi burada dinle ya da video sayfasında aç
-    if (entry.videoId) {
+    if (savedIsSong(entry)) {
+        // Şarkı kliplerini bu sayfadaki YouTube oynatıcısı çalamaz: şarkıyı o saniyede açan bağlantı
+        let videoRow = savedElement("div", "study-video");
+        let open = savedElement("a", "mini", "▶ Şarkıda aç");
+        open.href = savedVideoLink(entry);
+        open.title = "Şarkıyı kelimenin geçtiği saniyede aç (kısayol: D)";
+        videoRow.appendChild(open);
+        card.appendChild(videoRow);
+    } else if (entry.videoId) {
         let videoRow = savedElement("div", "study-video");
         let listen = savedElement("button", "mini", "▶ Videodan dinle");
         listen.type = "button";
@@ -277,6 +293,17 @@ function renderStudy() {
 
     if (studyRevealed) {
         card.appendChild(savedElement("p", "study-answer", entry.tr || "—"));
+        // Eş anlamlılar (synonyms.js): cevap açılınca, istenirse
+        if (typeof synToggleButton === "function") {
+            let open = studySynOpen === entry.key;
+            card.appendChild(synToggleButton(open, function () {
+                studySynOpen = open ? null : entry.key;
+                renderStudy();
+            }));
+            if (open) {
+                card.appendChild(synPanel(entry.word, entry.tr));
+            }
+        }
     }
     area.appendChild(card);
 
@@ -360,7 +387,7 @@ function renderSavedCards() {
     for (let entry of cards) {
         let row = savedElement("li", "saved-row");
         let text = savedElement("span", "saved-text");
-        text.append(savedElement("span", "saved-word", entry.word), ` = ${entry.tr || "—"}`);
+        text.append(savedElement("span", "saved-word", savedHead(entry)), ` = ${entry.tr || "—"}`);
         row.append(text, savedStatusChip(entry), savedElement("span", "saved-due", savedDueText(entry, now)));
 
         let remove = savedElement("button", "mini danger", "Karttan çıkar");
@@ -415,7 +442,9 @@ if (document.getElementById("studyArea")) {
             rateStudyCard(Number(event.key));
         } else if (event.key === "d" || event.key === "D") {
             let entry = studyQueue.length ? savedGet(studyQueue[0]) : null;
-            if (entry && entry.videoId) {
+            if (entry && savedIsSong(entry)) {
+                location.href = savedVideoLink(entry);  // şarkıda klip çalınmaz: şarkıyı aç
+            } else if (entry && entry.videoId) {
                 playClip(entry);
             }
         }
@@ -426,6 +455,7 @@ if (document.getElementById("studyArea")) {
 // ===== Kelimeler sayfası: aranabilir kelime defteri =====
 
 const LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1", "C2"];
+let wordSynOpen = null;  // eş anlamlıları açık olan satırın anahtarı
 
 function renderWordStats(all) {
     show("statTotal", all.length);
@@ -438,7 +468,7 @@ function wordRowHtml(entry) {
     let row = savedElement("li", "saved-row");
 
     let text = savedElement("span", "saved-text");
-    text.appendChild(savedElement("span", "saved-word", entry.word));
+    text.appendChild(savedElement("span", "saved-word", savedHead(entry)));
     if (entry.ipa) {
         text.append(" ", savedElement("span", "saved-ipa", `/${entry.ipa}/`));
     }
@@ -479,7 +509,19 @@ function wordRowHtml(entry) {
     });
 
     let video = savedVideoButton(entry);
-    row.append(card, ...(video ? [video] : []), remove);
+    let extra = [];
+    // Eş anlamlılar (synonyms.js): satırın altında açılır; liste yeniden çizilince açık kalır
+    let synOpen = wordSynOpen === entry.key;
+    if (typeof synToggleButton === "function") {
+        extra.push(synToggleButton(synOpen, function () {
+            wordSynOpen = synOpen ? null : entry.key;
+            renderSavedList();
+        }));
+    }
+    row.append(card, ...extra, ...(video ? [video] : []), remove);
+    if (synOpen && extra.length) {
+        row.appendChild(synPanel(entry.word, entry.tr));
+    }
     return row;
 }
 
@@ -551,7 +593,7 @@ if (document.getElementById("savedList")) {
         let textInput = document.getElementById("addWordText");
         let meaningInput = document.getElementById("addWordMeaning");
         let result = document.getElementById("wordAddResult");
-        let text = textInput.value.trim().toLowerCase();
+        let text = langWordCase(textInput.value.trim());  // Almanca isim büyük harfle kalır
         let meaning = meaningInput.value.trim();
         let key = savedKey("word", text);
 
@@ -581,6 +623,8 @@ if (document.getElementById("savedList")) {
         renderSavedList();
     });
 
+    // Eş anlamlılar panelinden deftere eklenen kelime listede hemen görünsün
+    document.addEventListener("saved-change", renderSavedList);
     renderSavedList();
 }
 
@@ -609,7 +653,7 @@ function renderSavedVideos() {
         let cardCount = entries.filter((entry) => entry.inCards).length;
         head.appendChild(savedElement("span", "saved-video-count", `${entries.length} kelime · ${cardCount} kartta`));
         if (group.id !== "") {
-            let open = savedElement("a", "mini", "Videoyu aç");
+            let open = savedElement("a", "mini", /^sp:/.test(group.id) ? "Şarkıyı aç" : "Videoyu aç");
             open.href = `video.html?v=${encodeURIComponent(group.id)}`;
             head.appendChild(open);
         }
@@ -617,7 +661,7 @@ function renderSavedVideos() {
         let words = savedElement("div", "saved-video-words");
         for (let entry of entries) {
             // Videolu kelime bağlantıdır; elle eklenenin gidecek yeri yoktur
-            let item = savedElement(entry.videoId ? "a" : "span", "", entry.word);
+            let item = savedElement(entry.videoId ? "a" : "span", "", savedHead(entry));
             if (entry.videoId) {
                 item.href = savedVideoLink(entry);
             }
@@ -654,7 +698,7 @@ function renderTodayHero(all, now) {
         text.textContent = `${reviewCount} tekrar, ${newCount} yeni kart. Sıradaki kelime sağda.`;
         action.textContent = "Çalışmaya başla";
         action.href = "kartlar.html";
-        display.textContent = due[0].word;
+        display.textContent = savedHead(due[0]);
     } else if (cards.length > 0) {
         let waiting = cards.filter((entry) => entry.due > now).sort((a, b) => a.due - b.due);
         title.textContent = "Bugünlük tekrar bitti";
@@ -690,7 +734,7 @@ function renderTodayWord(all) {
     let dayNumber = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / SAVED_DAY);
     let entry = pool[dayNumber % pool.length];
 
-    box.appendChild(savedElement("p", "wod-word", entry.word));
+    box.appendChild(savedElement("p", "wod-word", savedHead(entry)));
     if (entry.ipa) {
         box.appendChild(savedElement("p", "study-ipa", `/${entry.ipa}/`));
     }
@@ -735,7 +779,7 @@ function renderTodayIelts() {
     } catch (error) {
         profile = null;
     }
-    if (!box || !profile || !profile.date || typeof profile.target !== "number") {
+    if (!box || !profile || !profile.date || typeof profile.target !== "number" || !langHas("ielts")) {
         return;
     }
     let today = new Date();

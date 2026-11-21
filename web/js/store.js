@@ -2,7 +2,7 @@
 // Tüm sayfalar aynı kaydı paylaşır. Veri tarayıcıda durur: localStorage "savedWords".
 //
 // Her kayıt:
-// { key, kind: "word" | "phrasal", word, tr, ipa, pos, level,
+// { key, kind: "word" | "phrasal", word, tr, ipa, pos, level, art?, ← art: Almanca ismin artikeli (der, die, das)
 //   example, clipStart, clipEnd,        ← kelimenin videoda geçtiği cümle ve o cümlenin saniyeleri
 //   videoId, videoTitle, start, addedAt,
 //   inList, inCards,                    ← defterde mi, çalışma kartlarında mı
@@ -23,7 +23,7 @@ const SAVED_LEARNED_BOX = 4;  // bu kutu ve üstü "öğrenildi" sayılır
 function savedAll() {
     let list;
     try {
-        list = JSON.parse(localStorage.getItem(SAVED_KEY));
+        list = JSON.parse(localStorage.getItem(langKey(SAVED_KEY)));
     } catch (error) {
         return [];
     }
@@ -47,7 +47,7 @@ function savedAll() {
 // Yazılamazsa (gizli pencere, dolu depolama) false döner
 function savedWriteAll(list) {
     try {
-        localStorage.setItem(SAVED_KEY, JSON.stringify(list));
+        localStorage.setItem(langKey(SAVED_KEY), JSON.stringify(list));
         return true;
     } catch (error) {
         console.warn("Kelimeler kaydedilemedi:", error);
@@ -58,6 +58,11 @@ function savedWriteAll(list) {
 // Aynı kelime iki kez kaydedilmesin diye anahtar: "w:garden" ya da "p:pick up"
 function savedKey(kind, word) {
     return `${kind === "phrasal" ? "p" : "w"}:${word.toLowerCase()}`;
+}
+
+// Ekranda görünen ad: Almanca isimlerde artikeliyle ("der Tisch"; art alanı Pekiştir ve eş anlamlılardan gelir)
+function savedHead(entry) {
+    return entry.art ? `${entry.art} ${entry.word}` : entry.word;
 }
 
 function savedGet(key) {
@@ -189,6 +194,11 @@ function savedStreak() {
         day.setDate(day.getDate() - 1);
     }
     return streak;
+}
+
+// Şarkıdan kaydedilen kelimenin videoId'si "sp:<Spotify parça id>" olur (video.js şarkı modu)
+function savedIsSong(entry) {
+    return /^sp:/.test(entry.videoId);
 }
 
 // Kelimenin videoda geçtiği yere götüren bağlantı (video.js ?v= ve &t= değerlerini okur)
