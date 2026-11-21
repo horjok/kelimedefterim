@@ -4,6 +4,8 @@ Kelime Defteri Flask uygulaması.
 - web/ klasöründeki HTML/CSS/JS dosyalarını http://localhost:8000 adresinden sunar.
 - /api/transcript?url=<youtube linki> : videonun İngilizce transkriptini
   cümlelere böler ve her kelimenin IPA (fonetik) telaffuzunu ekler.
+- /api/song?url=<spotify şarkı linki> : şarkının zaman damgalı sözleri (LRCLIB); sözler video transkriptiyle
+  aynı biçimde saklanır (kimlik sp:<id>), kelime listesi ve gramer aynı uçlardan alınır.
 - /api/vocab?url=<youtube linki> : videodaki kelimeler, seviyelere göre.
 - /api/translate?text=<cümle> : tek bir cümlenin Türkçe çevirisi.
 - /api/grammar?url=<youtube linki> : videodaki gramer konuları (Gemini API, grammar.py).
@@ -23,13 +25,14 @@ from urllib.error import HTTPError
 
 from flask import Flask, Response, abort, g, jsonify, request, send_from_directory
 
-from . import ielts, languages, lessons, synonyms, wordbank
+from . import grammar as grammar_module, ielts, languages, lessons, songs, synonyms, wordbank
 from .config import APP_PASSWORD, APP_PUBLIC, ON_VERCEL, WEB_DIR
 from .gemini import GeminiError
 from .grammar import GrammarError, analyze_grammar
 from .ipa import prepare_ipa, token_to_ipa
 from .transcripts import (
     PACKS,
+    SONG_ID,
     TranscriptError,
     clean,
     extract_video_id,
@@ -122,11 +125,23 @@ def language_list():
     return jsonify({"default": languages.DEFAULT, "languages": languages.public_list()})
 
 
+NOT_A_LINK = "Bu geçerli bir YouTube ya da Spotify şarkı linki değil."
+
+
+def source_id(url):
+    """Linkten kaynak kimliği: YouTube video id'si ya da Spotify şarkısı için sp:<id>; tanınmazsa None."""
+    video_id = extract_video_id(url)
+    if video_id:
+        return video_id
+    track_id = songs.extract_track_id(url)
+    return songs.song_id(track_id) if track_id else None
+
+
 @app.get("/api/transcript")
 def transcript():
-    video_id = extract_video_id(request.args.get("url", ""))
+    video_id = source_id(request.args.get("url", ""))
     if not video_id:
-        return error("Bu geçerli bir YouTube linki değil.", 400)
+        return error(NOT_A_LINK, 400)
     try:
         return jsonify(get_transcript(video_id, g.lang))
     except TranscriptError as exc:
@@ -136,9 +151,9 @@ def transcript():
 @app.get("/api/vocab")
 def vocabulary():
     """Videodaki kelimeler: seviyelere göre (A1...C2) + phrasal verb'ler, Türkçe anlamlarıyla."""
-    video_id = extract_video_id(request.args.get("url", ""))
+    video_id = source_id(request.args.get("url", ""))
     if not video_id:
-        return error("Bu geçerli bir YouTube linki değil.", 400)
+        return error(NOT_A_LINK, 400)
     key = (g.lang, video_id)
     if key in vocab_cache:
         return jsonify(vocab_cache[key])
@@ -161,9 +176,9 @@ def vocabulary():
 def grammar():
     """Videodaki gramer konuları (Gemini API): {"model", "topics": [...], "truncated"}.
     Hata: {"error": mesaj, "code": "no_key" | "bad_key" | "quota" | ...}."""
-    video_id = extract_video_id(request.args.get("url", ""))
+    video_id = source_id(request.args.get("url", ""))
     if not video_id:
-        return error("Bu geçerli bir YouTube linki değil.", 400)
+        return error(NOT_A_LINK, 400)
     try:
         lines = get_transcript(video_id, g.lang)["lines"]
     except TranscriptError as exc:
@@ -172,6 +187,77 @@ def grammar():
         return jsonify(analyze_grammar(video_id, lines, g.lang))
     except GrammarError as exc:
         return jsonify({"error": exc.message, "code": exc.code}), exc.status
+
+
+# ===== Şarkılar (Spotify linki → LRCLIB sözleri) =====
+
+def lyrics_choice(raw):
+    """?lyrics= değeri: LRCLIB kayıt numarası (pozitif tam sayı); yoksa None, bozuksa ValueError."""
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    if not (raw.isascii() and raw.isdigit()):
+        raise ValueError(raw)
+    return int(raw)
+
+
+def spotify_duration(raw):
+    """?duration= saniye; sayı değilse ya da anlamsızsa yok sayılır."""
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    return value if 0 < value < 36000 else None  # nan ve inf bu aralığın dışında kalır
+
+
+@app.get("/api/song")
+def song():
+    """Spotify şarkısının sözleri: ?url=&lyrics=<LRCLIB no>&duration=<sn>&choose=1 (aday listesini zorla).
+    Tek uygun söz varsa şarkı (transkript biçimi + kind/title/artist/thumbnail/lrclibId/languageWarning),
+    birden çok sanatçı ya da süre uyuşmazlığı varsa {"choose": true, "title", "thumbnail", "candidates"} döner."""
+    link = request.args.get("url", "")
+    track_id = songs.extract_track_id(link)
+    if not track_id:
+        if songs.is_spotify_link(link):
+            return error("Yalnızca tek bir şarkının linkini yapıştır.", 400)
+        return error("Bu geçerli bir Spotify şarkı linki değil.", 400)
+    try:
+        chosen = lyrics_choice(request.args.get("lyrics"))
+    except ValueError:
+        return error("Geçersiz söz seçimi.", 400)
+
+    # choose=1: "Başka söz seç" düğmesi; önbellek atlanır, tek aday olsa bile aday listesi döner
+    force_choice = request.args.get("choose") == "1" and chosen is None
+
+    sid = songs.song_id(track_id)
+    if chosen is None and not force_choice:  # daha önce açılmış şarkı: ağa çıkmadan önbellekten
+        try:
+            return jsonify(get_transcript(sid, g.lang))
+        except TranscriptError:
+            pass
+
+    try:
+        try:
+            meta = songs.song_meta(track_id)
+        except songs.SongError:
+            raise songs.SongError("Spotify'dan şarkı bilgisi alınamadı.", 502)  # bulunamadı da ağ hatası da aynı
+        if chosen is not None:
+            candidate = songs.fetch_lyrics(chosen)
+        else:
+            candidates = songs.find_lyrics(meta["title"])
+            if not candidates:
+                raise songs.SongError("Bu şarkının zaman damgalı sözleri bulunamadı.", 404)
+            candidate = None if force_choice else songs.choose_candidate(candidates, spotify_duration(request.args.get("duration")))
+            if candidate is None:
+                return jsonify({"choose": True, "title": meta["title"], "thumbnail": meta["thumbnail"],
+                                "candidates": songs.public_candidates(candidates)})
+        data = songs.get_song(track_id, candidate, meta, g.lang)
+    except songs.SongError as exc:
+        return error(exc.message, exc.status)
+    # Sözler değişmiş olabilir ("Başka söz seç"): eski söze göre hazırlanmış kelime listesi ve gramer analizi kalmasın
+    vocab_cache.pop((g.lang, sid), None)
+    grammar_module.forget(sid, g.lang)
+    return jsonify(data)
 
 
 @app.get("/api/syllables")
@@ -303,7 +389,7 @@ def ielts_set():
 def ielts_videos():
     """Daha önce açılmış (transkripti kayıtlı) videolar: Listening için seçim listesi."""
     videos = [{"videoId": data["videoId"], "title": data.get("title", ""), "lines": len(data["lines"])}
-              for data in transcript_cache.values()]
+              for data in transcript_cache.values() if not SONG_ID.match(data["videoId"])]  # şarkılar Listening'e girmez
     return jsonify({"videos": sorted(videos, key=lambda video: video["title"].lower())})
 
 

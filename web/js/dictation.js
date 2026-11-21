@@ -1048,7 +1048,7 @@ function dictationBoundary(sentence) {
 // "Sonda +" değişti (video.js setTail çağırır): cümle sonunda duruyorsak eklenen süre hemen çalınsın
 function dictationTailChanged() {
     if (document.getElementById("dictation").hidden) return;
-    if (!dictationSentences.length || !dictationPlayerReady() || !dictationPausedAtEnd) return;
+    if (!dictationSentences.length || !dictationPlayerReady() || !dictationPausedAtEnd || !dictationCanPlay()) return;
     if (player.getCurrentTime() < dictationBoundary(dictationSentences[dictationIndex]) - 0.1) {
         dictationPausedAtEnd = false;
         dictationLoopAt = 0;
@@ -1061,8 +1061,28 @@ function dictationPlayerReady() {
     return typeof player !== "undefined" && player && typeof player.getPlayerState === "function";
 }
 
+// Şarkı önizlemesinde (Spotify girişi yok) cümle çalınmaz ve kilitlenmez; alıştırmanın metni yine çalışır
+function dictationCanPlay() {
+    return typeof playbackAllowed !== "function" || playbackAllowed();
+}
+
+// video.js applySongUi çağırır: önizlemede "Dinle" ve "Otomatik tekrar" kapalı
+function dictationSetPlayback(allowed) {
+    let listen = document.getElementById("dictationListen");
+    if (listen) {
+        listen.disabled = !allowed;
+        listen.title = allowed ? "Cümleyi baştan çal (Ctrl+Boşluk)" : "Önizlemede cümle çalınamaz: tam şarkı için Spotify'a giriş yap";
+    }
+    let loop = document.getElementById("dictationLoop");
+    if (loop) loop.disabled = !allowed;
+    if (!allowed) {
+        dictationLoopAt = 0;
+        dictationPausedAtEnd = false;
+    }
+}
+
 function dictationPlayCurrent() {
-    if (!dictationSentences.length || !dictationPlayerReady()) return;
+    if (!dictationSentences.length || !dictationPlayerReady() || !dictationCanPlay()) return;
     let line = dictationSentences[dictationIndex].line;
     if (typeof player.setPlaybackRate === "function") player.setPlaybackRate(dictationSpeed);
     dictationPausedAtEnd = false;
@@ -1075,7 +1095,7 @@ function dictationPlayCurrent() {
 // Dikte açıkken oynatma ekrandaki cümleye kilitli: hangi yolla oynatılırsa oynatılsın
 // (Dinle, YouTube'un kendi düğmesi, klavye) cümle bitince durur.
 function dictationWatch() {
-    if (document.getElementById("dictation").hidden || !dictationSentences.length || !dictationPlayerReady()) return;
+    if (document.getElementById("dictation").hidden || !dictationSentences.length || !dictationPlayerReady() || !dictationCanPlay()) return;
     // Otomatik tekrar: cümle sonunda durduktan kısa süre sonra, çözülmediyse yeniden çal
     if (dictationLoopAt && Date.now() >= dictationLoopAt) {
         dictationLoopAt = 0;

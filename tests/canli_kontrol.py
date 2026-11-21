@@ -3,9 +3,10 @@
 Otomatik test keşfine girmez (adı test_ ile başlamaz); internet ister, elle çalıştırılır:
     python -m tests.canli_kontrol
 
-YouTube transkripti (Almanca, İspanyolca, İngilizce), Google çeviri ve Wiktionary'ye birkaç istek atar.
+YouTube transkripti (Almanca, İspanyolca, İngilizce), Google çeviri, Wiktionary, Spotify oEmbed ve LRCLIB'e birkaç istek atar.
 Gemini çağrılmaz (kota harcamaz). Önbellek geçici klasörde; gerçek Redis'e ve cache/'e yazılmaz.
-YouTube ya da Google o an engelliyorsa kontrol "ATLANDI" der: bu kodda hata olduğu anlamına gelmez.
+YouTube, Google, Spotify ya da LRCLIB o an engelliyorsa kontrol "ATLANDI" der: bu kodda hata olduğu anlamına gelmez.
+Şarkı kontrolü söz metnini yazdırmaz: yalnızca alan adları, sayılar ve geçti/kaldı çıkar (telif).
 """
 
 import os
@@ -25,8 +26,61 @@ sys.path.insert(0, str(ROOT))
 
 from backend.app import app  # noqa: E402
 
+# Şarkı kontrolü için tek, herkesçe bilinen herkese açık Spotify şarkısı (söz metni hiçbir yere yazdırılmaz)
+SONG_ID = "4PTG3Z6ehGkBFwjybzWkR8"
+CANDIDATE_FIELDS = {"id", "artist", "track", "album", "duration"}
+
 # Herkese açık, elle altyazılı videolar (dil, video id, listede olması beklenen kelime)
 VIDEOS = [("de", "g-bYI2YP9gE", "Straße"), ("es", "2VssbS3dFy8", None), ("en", "5FBdxyfBxM8", None)]
+
+
+def check_song(client, check):
+    """Spotify oEmbed + LRCLIB: gerçek yanıt biçimleri songs.py ve tests/support.py'nin taklit ettiğiyle uyuşuyor mu?"""
+    from backend import songs
+
+    track_url = f"https://open.spotify.com/track/{SONG_ID}"
+    try:
+        meta = songs.song_meta(SONG_ID)
+    except songs.SongError as exc:
+        print(f"ATLANDI şarkı (Spotify oEmbed): kod {exc.status}")
+        return
+    check("Spotify oEmbed başlık", bool(meta["title"]), "başlık var" if meta["title"] else "başlık yok")
+    check("Spotify oEmbed alanları", set(meta) == {"title", "thumbnail"}, ",".join(sorted(meta)))
+
+    try:
+        candidates = songs.find_lyrics(meta["title"])
+    except songs.SongError as exc:
+        print(f"ATLANDI şarkı (LRCLIB arama): kod {exc.status}")
+        return
+    check("LRCLIB arama aday döndürdü", len(candidates) > 0, f"{len(candidates)} aday")
+    if not candidates:
+        return
+    check("LRCLIB aday alanları", all(CANDIDATE_FIELDS <= set(c) for c in candidates), ",".join(sorted(candidates[0])))
+    check("LRCLIB adayları senkronlu söz taşıyor", all(c["synced"].strip() for c in candidates))
+    rows = songs.parse_lrc(candidates[0]["synced"])
+    check("syncedLyrics satırlara ayrıldı", len(rows) > 10, f"{len(rows)} satır")
+    check("LRC satırı (başlangıç, süre, metin) biçiminde", all(len(row) == 3 and row[1] > 0 for row in rows))
+
+    # Uçtan uca: aday listesi (söz metni olmadan), seçimle şarkı, kelime listesi
+    response = client.get("/api/song", query_string={"url": track_url, "choose": "1", "lang": "en"})
+    data = response.get_json(silent=True) or {}
+    check("/api/song aday listesi", response.status_code == 200 and data.get("choose") is True and bool(data.get("candidates")),
+          f"kod {response.status_code}")
+    check("aday listesinde söz metni yok", all("synced" not in c for c in data.get("candidates", [])))
+    response = client.get("/api/song", query_string={"url": track_url, "lyrics": str(candidates[0]["id"]), "lang": "en"})
+    data = response.get_json(silent=True) or {}
+    check("/api/song şarkıyı kurdu", response.status_code == 200 and data.get("videoId") == f"sp:{SONG_ID}"
+          and data.get("kind") == "song" and len(data.get("lines", [])) > 10, f"kod {response.status_code}, {len(data.get('lines', []))} satır")
+    if response.status_code != 200:
+        return
+    check("satırlarda zaman ve kelime alanları", all({"start", "end", "text", "words"} <= set(line) for line in data["lines"]))
+    response = client.get("/api/vocab", query_string={"url": track_url, "lang": "en"})
+    vocab = response.get_json(silent=True) or {}
+    if response.status_code == 503:
+        print("ATLANDI şarkı kelime listesi: çeviri servisi sınırlıyor")
+    else:
+        count = sum(len(items) for items in vocab.get("levels", {}).values())
+        check("şarkı kelime listesi", response.status_code == 200 and count > 5, f"kod {response.status_code}, {count} kelime")
 
 
 def main():
@@ -67,6 +121,8 @@ def main():
     from backend import wordbank
     example = wordbank.fetch_example_es(("Haus", "NOUN"), "de")
     check("Wiktionary yanıt biçimi", example is not None, repr(example)[:80])
+
+    check_song(client, check)
 
     shutil.rmtree(TMP, ignore_errors=True)
     print("Sonuç:", "hepsi geçti" if not failures else f"{len(failures)} hata")

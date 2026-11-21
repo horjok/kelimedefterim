@@ -196,6 +196,11 @@ function savedStreak() {
     return streak;
 }
 
+// Şarkıdan kaydedilen kelimenin videoId'si "sp:<Spotify parça id>" olur (video.js şarkı modu)
+function savedIsSong(entry) {
+    return /^sp:/.test(entry.videoId);
+}
+
 // Kelimenin videoda geçtiği yere götüren bağlantı (video.js ?v= ve &t= değerlerini okur)
 function savedVideoLink(entry) {
     return `video.html?v=${encodeURIComponent(entry.videoId)}&t=${Math.floor(entry.start || 0)}`;

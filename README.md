@@ -15,6 +15,7 @@ Bunların yanında aralıklı tekrar destesi, 4 aşamalı kelime pekiştirme, s�
 - [Video: transkript, telaffuz, çeviri](#video-transkript-telaffuz-çeviri)
 - [Dikte](#dikte)
 - [Videodaki kelimeler](#videodaki-kelimeler)
+- [Şarkılar](#şarkılar)
 - [Kartlar: aralıklı tekrar](#kartlar-aralıklı-tekrar)
 - [Pekiştir](#pekiştir)
 - [Sözlük](#sözlük)
@@ -56,6 +57,15 @@ Bunların yanında aralıklı tekrar destesi, 4 aşamalı kelime pekiştirme, s�
 - Çok yaygın kelimeler ("the", "have", "good"…) ayrı bir **Temel** grubuna gider. Temelleri oturmuş bir öğrenci için asıl kıymetli olan biraz daha seyrek kelimeler.
 - **Phrasal verbs** ayrı listelenir; "pick it up" gibi araya kelime giren kullanımlar da yakalanır.
 - Karta dokununca video kelimenin geçtiği yere gider. "＋ Defter" kelimeyi kaydeder, "＋ Kart" tekrar destesine de ekler. Kaydedilen kelime, geçtiği cümleyi ve o cümlenin saniyelerini de saklar.
+
+## Şarkılar
+
+Video sayfasındaki aynı kutuya bir **Spotify şarkı linki** yapıştırabilirsin. Şarkının zaman damgalı sözleri [LRCLIB](https://lrclib.net)'den gelir ve bir video transkripti gibi işlenir: her satırın altında okunuş, seviyeli kelime listesi, Türkçe anlamlar, dikte ve gramer modu. Şarkı sayfadaki Spotify oynatıcısından çalar; çaldıkça satırlar ilerler, bir satıra dokununca şarkı oradan devam eder.
+
+- Spotify şarkı adını verir ama sanatçıyı vermez, bu yüzden birden çok söz bulunursa kısa bir listeden doğrusunu seçersin. Yanlış sözü sonradan "Başka söz seç" ile değiştirebilirsin.
+- Tarayıcıda Spotify'a giriş yapmadıysan oynatıcı yalnızca 30 saniyelik önizleme çalar. Bu durumda satır takibi kapanır; sözler, kelimeler, çeviri, gramer ve dikte metni yine çalışır.
+- Şarkıdan kaydettiğin kelimenin kartında "Şarkıda aç" bağlantısı olur, Kitaplık ve Bugün'de başlığın önüne ♪ gelir.
+- Sözlerin telifi yayıncılara aittir: sözler yalnızca uygulamanın kendi önbelleğinde (yerelde `cache/`, Vercel'de Redis) tutulur, depoya girmez.
 
 ## Kartlar: aralıklı tekrar
 
@@ -133,7 +143,7 @@ seri, ilerleme, notlar                          storage.py: önbellek
 - **Kullanıcı verisi** yalnızca tarayıcıda (localStorage) durur. Sunucuda hesap ya da kullanıcı verisi yoktur.
 - **Önbellek:** çeviriler, transkriptler, gramer analizleri, konu anlatımları ve kelime haznesi bir kez üretilip saklanır. Aynı istek ikinci kez dış servise gitmez. Rate limit'e karşı asıl önlem budur.
 - **Model çıktısına güvenilmez:** Gemini yanıtları JSON olarak istenir ve alan alan denetlenir. Satır numarası tutmayan örnek, cevabı seçeneklerde olmayan soru ya da kaynakta geçmeyen alıntı atılır.
-- **Çoklu dil:** API `?lang=` alır, localStorage anahtarları dile göre ayrılır (destesi, defteri ayrı). Kenar çubuğundaki **Dil** seçimiyle İspanyolcaya geçilir: video, dikte, kelimeler, kartlar ve sözlük çalışır. Telaffuz İspanya aksanına göre kurallarla üretilir (cielo /ˈθjelo/), yalın hâl simplemma ile bulunur, seviye sıklıktan tahmin edilir. Dikte vurgu işaretsiz cevabı da kabul eder (estacion = estación). İspanyolcanın kendi gramer müfredatı (70 konu, A1–C1, İspanya kullanımı), Gemini anlatımı ve alıştırmaları, videoda Gramer modu ve Pekiştir var: sıklık listesinden A1–C2 ya da 31 konuda B1/B2/C1 konulu listeler (1302 kelime). **Almanca** da aynı bölümlerle çalışır: Hochdeutsch okunuşu kurallarla (Straße /ˈʃtʁaːsə/), isimler büyük harfle ve Pekiştir'de, kartlarda, eş anlamlılarda artikeliyle (der Tisch), 72 konuluk gramer müfredatı ve 31 konulu liste (1302 kelime); dikte ä/ö/ü'yü ayrı harf sayar ama ae/oe/ue ve ss'yi kabul eder. Phrasal verb'ler ve IELTS yalnızca İngilizcede.
+- **Çoklu dil:** API `?lang=` alır, localStorage anahtarları dile göre ayrılır (destesi, defteri ayrı). Kenar çubuğundaki **Dil** seçimiyle İspanyolcaya geçilir: video, dikte, kelimeler, kartlar ve sözlük çalışır. Telaffuz İspanya aksanına göre kurallarla üretilir (cielo /ˈθjelo/), yalın hâl simplemma ile bulunur, seviye sıklıktan tahmin edilir. Dikte vurgu işaretsiz cevabı da kabul eder (estacion = estación). İspanyolcanın kendi gramer müfredatı (70 konu, A1–C1, İspanya kullanımı), Gemini anlatımı ve alıştırmaları, videoda Gramer modu ve Pekiştir var: sıklık listesinden A1–C2 ya da 31 konuda B1/B2/C1 konulu listeler (1302 kelime). **Almanca** da aynı bölümlerle çalışır: Hochdeutsch okunuşu kurallarla (Straße /ˈʃtʁaːsə/), isimler büyük harfle ve Pekiştir'de, kartlarda, eş anlamlılarda artikeliyle (der Tisch), 72 konuluk gramer müfredatı ve 31 konulu liste (1302 kelime); dikte ä/ö/ü'yü ayrı harf sayar ama ae/oe/ue ve ss'yi kabul eder. Phrasal verb'ler ve IELTS yalnızca İngilizcede. Şarkı sözleri de üç dilde çalışır.
 
 ## Kurulum
 
@@ -155,12 +165,12 @@ Anahtar olmadan da transkript, dikte, kelimeler, kartlar ve sözlük çalışır
 Ek paket gerekmez (Python'un `unittest`'i):
 
 ```bash
-python -m unittest discover -s tests -v   # 37 entegrasyon testi, ~4 sn, internetsiz
-python -m tests.canli_kontrol             # isteğe bağlı: gerçek YouTube, çeviri ve Wiktionary'ye birkaç istek
+python -m unittest discover -s tests -v   # 54 entegrasyon testi, ~4 sn, internetsiz
+python -m tests.canli_kontrol             # isteğe bağlı: gerçek YouTube, çeviri, Wiktionary, Spotify oEmbed ve LRCLIB'e birkaç istek
 ```
 
 Entegrasyon testleri Flask uygulamasını test istemcisiyle uçtan uca çalıştırır (rotalar, dil katmanı, kelime çözümleme,
-IPA, önbellek); yalnızca dış servisler (YouTube, Google çeviri, Gemini, sözlükler) `tests/support.py` içinde taklit edilir.
+IPA, önbellek); yalnızca dış servisler (YouTube, Google çeviri, Gemini, sözlükler, Spotify, LRCLIB) `tests/support.py` içinde taklit edilir.
 Önbellek geçici bir klasördedir: gerçek `cache/` klasörüne ve Redis'e yazılmaz, `gemini_key.txt` okunmaz.
 
 ## Vercel'de yayınlama
@@ -194,6 +204,7 @@ Yerelde açtığın videonun transkripti Redis'e yazılır, Vercel'deki site de 
 │   ├── storage.py         Önbellek deposu (cache/ ya da Upstash Redis)
 │   ├── transcripts.py     YouTube transkripti, cümlelere bölme, videolarda kelime arama
 │   ├── ipa.py             IPA telaffuz ve heceleme
+│   ├── songs.py           Şarkılar: Spotify linki, oEmbed, LRCLIB sözleri (LRC) ve transkripte çevirme
 │   ├── vocab.py           Kelime listesi: lemma, CEFR seviyesi, phrasal verb, Türkçe anlam
 │   ├── gemini.py          Gemini API katmanı (yedek modeller, zaman aşımı)
 │   ├── grammar.py         Videodaki gramer konuları
@@ -220,6 +231,8 @@ Yerelde açtığın videonun transkripti Redis'e yazılır, Vercel'deki site de 
 | Google Translate (resmi olmayan uç nokta) | Türkçe anlamlar ve cümle çevirisi | Yoğun kullanımda 429 döner, o an anlamlar boş kalır |
 | Gemini API | Gramer, IELTS, eş anlamlılar, Pekiştir denetimi | Kendi anahtarının kotası |
 | Free Dictionary API | Sözlük tanımları, örnek cümleler | Anahtarsız; ara sıra yavaşlar |
+| Spotify oEmbed ve iFrame API | Şarkı adı, kapak ve gömülü oynatıcı | oEmbed sanatçı vermez; girişsiz tarayıcıda oynatıcı 30 sn önizleme çalar |
+| LRCLIB | Şarkıların zaman damgalı sözleri | Anahtarsız, açık servis; her şarkı yoktur, yanlış sürüm gelebilir |
 | YouGlish | Videolarda telaffuz örnekleri | Günlük ücretsiz sınır |
 
 Yapay zekâ ile üretilen içerik (anlatımlar, IELTS soruları, değerlendirmeler) hata içerebilir; sayfalarda bu uyarı durur.

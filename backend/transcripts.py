@@ -81,6 +81,12 @@ def cache_for(lang):
 # ===== YouTube linkinden video id =====
 
 VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
+SONG_ID = re.compile(r"^sp:[A-Za-z0-9]{22}$")  # Spotify şarkısı: sp:<22 karakterlik şarkı kimliği> (backend/songs.py)
+
+
+def storage_key(video_id):
+    """Depo adında ':' olamaz (storage.NAME): sp:<id> → sp_<id>."""
+    return video_id.replace(":", "_")
 
 
 def extract_video_id(link):
@@ -177,10 +183,12 @@ def get_transcript(video_id, lang="en"):
     cache = cache_for(lang)
     if video_id in cache:
         return cache[video_id]
-    stored = storage.read(f"{folder(lang)}/{video_id}.json")  # başka bir sunucu kopyası (Vercel) kaydetmiş olabilir
+    stored = storage.read(f"{folder(lang)}/{storage_key(video_id)}.json")  # başka bir sunucu kopyası (Vercel) kaydetmiş olabilir
     if valid_transcript(stored):
         cache[video_id] = stored
         return stored
+    if SONG_ID.match(video_id):  # şarkıların YouTube transkripti yok: sözler /api/song ile getirilir
+        raise TranscriptError("Önce şarkıyı aç: linki Video sayfasına yapıştır.", 404)
 
     try:
         fetched = transcript_api.fetch(video_id, languages=languages.info(lang)["transcript"])
@@ -224,11 +232,12 @@ def fetch_title(video_id):
 
 
 def valid_transcript(data):
-    return isinstance(data, dict) and bool(VIDEO_ID.match(str(data.get("videoId", "")))) and isinstance(data.get("lines"), list)
+    video_id = str(data.get("videoId", "")) if isinstance(data, dict) else ""
+    return bool(VIDEO_ID.match(video_id) or SONG_ID.match(video_id)) and isinstance(data.get("lines"), list)
 
 
 def save_transcript(data, lang="en"):
-    storage.write(f"{folder(lang)}/{data['videoId']}.json", data)
+    storage.write(f"{folder(lang)}/{storage_key(data['videoId'])}.json", data)
 
 
 def load_transcripts():

@@ -83,6 +83,34 @@ TRANSLATIONS = {
 }
 
 
+# Sahte şarkılar (hepsi uydurma; gerçek şarkı sözü yok). Spotify oEmbed başlığı + LRCLIB kayıtları.
+SONGS = {"aaaaaaaaaaaaaaaaaaaaa1": "Uydurma Sabah", "aaaaaaaaaaaaaaaaaaaaa2": "Ortak Ad",
+         "aaaaaaaaaaaaaaaaaaaaa3": "Sozsuz Parca", "aaaaaaaaaaaaaaaaaaaaa4": "Cancion Inventada"}
+
+LRC_SABAH = ("[00:01.00] ♪\n[00:05.20] I walk to the station every morning\n[00:09.80] the weather was beautiful\n\n"
+             "[00:14.00] ...\n[00:18.50] we sing about the sunrise\n[00:23.00] and nobody is late today\n")
+LRC_ORTAK_1 = "[00:02.00] ♪\n[00:06.00] Paper boats drift along the river\n[00:11.00] I count the lamps in the window\n"
+LRC_ORTAK_2 = "[00:03.00] Silver trains cross the valley\n[00:08.50] we wave from the open door\n"
+LRC_ES = ("[00:02.00] ♪\n[00:06.00] voy a la estación cada mañana\n[00:10.50] la ciudad está tranquila esta noche\n"
+          "[00:15.00] mi casa es muy grande\n[00:19.50] todos los días vamos al mar\n")
+
+
+def lrclib_entry(entry_id, track, artist, duration, synced="", plain="", instrumental=False):
+    return {"id": entry_id, "trackName": track, "artistName": artist, "albumName": "Uydurma Albüm",
+            "duration": duration, "instrumental": instrumental, "plainLyrics": plain or None, "syncedLyrics": synced or None}
+
+
+LYRICS = [
+    lrclib_entry(9001, "Uydurma Sabah", "Test Sanatci", 200.0, LRC_SABAH, "I walk to the station every morning"),
+    lrclib_entry(9002, "Uydurma Sabah", "Test Sanatci", 201.5, LRC_SABAH, "I walk to the station every morning"),
+    lrclib_entry(9011, "Ortak Ad", "Ilk Sanatci", 200.0, LRC_ORTAK_1, "Paper boats drift along the river"),
+    lrclib_entry(9012, "Ortak Ad", "Ikinci Sanatci", 199.0, LRC_ORTAK_2, "Silver trains cross the valley"),
+    lrclib_entry(9021, "Sozsuz Parca", "Duz Sanatci", 150.0, plain="Only plain words here"),
+    lrclib_entry(9022, "Sozsuz Parca", "Enstruman Sanatci", 150.0, instrumental=True),
+    lrclib_entry(9031, "Cancion Inventada", "Artista Falso", 180.0, LRC_ES, "voy a la estación cada mañana"),
+]
+
+
 class FakeNet:
     """urllib.request.urlopen yerine geçer. Her istek kaydedilir; tanınmayan adres hata sayılır."""
 
@@ -96,6 +124,7 @@ class FakeNet:
         self.gemini_mode = "ok"     # ok | quota | overloaded-main | bad_json | timeout
         self.translate_status = 0   # 0 = çalışır; 429/503 = Google hata döner
         self.wiktionary = {}        # kelime -> örnek cümle (yoksa 404)
+        self.spotify_down = False   # True = Spotify oEmbed ağ hatası verir
 
     # --- yönlendirme ---
     def urlopen(self, target, data=None, timeout=None, **kwargs):
@@ -115,6 +144,10 @@ class FakeNet:
         if host == "www.youtube.com" and "/oembed" in url:
             video = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)["url"][0][-11:]
             return FakeResponse({"title": f"Test videosu {video}"})
+        if host == "open.spotify.com" and urllib.parse.urlparse(url).path == "/oembed":
+            return self.spotify_oembed(url)
+        if host == "lrclib.net":
+            return self.lrclib(url)
         self.unexpected.append(url)
         raise urllib.error.URLError(f"testte beklenmeyen adres: {url}")
 
@@ -138,6 +171,28 @@ class FakeNet:
         lang, pos = example
         return FakeResponse({lang: [{"partOfSpeech": pos, "definitions": [
             {"definition": "test", "parsedExamples": [{"example": f"Hier steht {word} in einem Satz."}]}]}]})
+
+    # --- Spotify oEmbed ---
+    def spotify_oembed(self, url):
+        if self.spotify_down:
+            raise urllib.error.URLError("spotify kapalı")
+        track = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)["url"][0].rstrip("/").rsplit("/", 1)[-1]
+        if track not in SONGS:
+            raise http_error(url, 404)
+        return FakeResponse({"title": SONGS[track], "thumbnail_url": f"https://i.scdn.co/image/{track}"})
+
+    # --- LRCLIB ---
+    def lrclib(self, url):
+        parsed = urllib.parse.urlparse(url)
+        if parsed.path == "/api/search":
+            name = urllib.parse.parse_qs(parsed.query).get("track_name", [""])[0].lower()
+            return FakeResponse([entry for entry in LYRICS if entry["trackName"].lower() == name])
+        if parsed.path.startswith("/api/get/"):
+            wanted = parsed.path.rsplit("/", 1)[1]
+            for entry in LYRICS:
+                if str(entry["id"]) == wanted:
+                    return FakeResponse(entry)
+        raise http_error(url, 404)
 
     # --- Gemini ---
     def gemini(self, url, payload):

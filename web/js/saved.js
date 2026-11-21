@@ -31,9 +31,10 @@ function savedVideoButton(entry) {
     if (!entry.videoId) {
         return null;
     }
-    let link = savedElement("a", "mini", "▶ Video");
+    let song = savedIsSong(entry);
+    let link = savedElement("a", "mini", song ? "▶ Şarkıda aç" : "▶ Video");
     link.href = savedVideoLink(entry);
-    link.title = "Kelimenin videoda geçtiği yeri aç";
+    link.title = song ? "Kelimenin şarkıda geçtiği yeri aç" : "Kelimenin videoda geçtiği yeri aç";
     return link;
 }
 
@@ -68,7 +69,13 @@ function savedVideoGroups(entries) {
         group.title = group.title || entry.videoTitle || "";
     }
     for (let group of groups.values()) {
-        group.title = group.id === "" ? "Elle eklenenler" : (group.title || `Video ${group.id}`);
+        if (group.id === "") {
+            group.title = "Elle eklenenler";
+        } else if (/^sp:/.test(group.id)) {
+            group.title = "♪ " + (group.title || "Şarkı");  // şarkı paketi: başlığın önünde ♪
+        } else {
+            group.title = group.title || `Video ${group.id}`;
+        }
     }
     return [...groups.values()];
 }
@@ -261,7 +268,15 @@ function renderStudy() {
     }
 
     // Video bağlantısı: cümleyi burada dinle ya da video sayfasında aç
-    if (entry.videoId) {
+    if (savedIsSong(entry)) {
+        // Şarkı kliplerini bu sayfadaki YouTube oynatıcısı çalamaz: şarkıyı o saniyede açan bağlantı
+        let videoRow = savedElement("div", "study-video");
+        let open = savedElement("a", "mini", "▶ Şarkıda aç");
+        open.href = savedVideoLink(entry);
+        open.title = "Şarkıyı kelimenin geçtiği saniyede aç (kısayol: D)";
+        videoRow.appendChild(open);
+        card.appendChild(videoRow);
+    } else if (entry.videoId) {
         let videoRow = savedElement("div", "study-video");
         let listen = savedElement("button", "mini", "▶ Videodan dinle");
         listen.type = "button";
@@ -427,7 +442,9 @@ if (document.getElementById("studyArea")) {
             rateStudyCard(Number(event.key));
         } else if (event.key === "d" || event.key === "D") {
             let entry = studyQueue.length ? savedGet(studyQueue[0]) : null;
-            if (entry && entry.videoId) {
+            if (entry && savedIsSong(entry)) {
+                location.href = savedVideoLink(entry);  // şarkıda klip çalınmaz: şarkıyı aç
+            } else if (entry && entry.videoId) {
                 playClip(entry);
             }
         }
@@ -636,7 +653,7 @@ function renderSavedVideos() {
         let cardCount = entries.filter((entry) => entry.inCards).length;
         head.appendChild(savedElement("span", "saved-video-count", `${entries.length} kelime · ${cardCount} kartta`));
         if (group.id !== "") {
-            let open = savedElement("a", "mini", "Videoyu aç");
+            let open = savedElement("a", "mini", /^sp:/.test(group.id) ? "Şarkıyı aç" : "Videoyu aç");
             open.href = `video.html?v=${encodeURIComponent(group.id)}`;
             head.appendChild(open);
         }

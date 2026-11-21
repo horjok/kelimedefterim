@@ -434,7 +434,8 @@ function dictFindVideos(word, request) {
 function dictVideoHtml(video) {
     let group = dictElement("div", "dict-video");
     let head = dictElement("div", "dict-video-head");
-    head.appendChild(dictElement("span", "dict-video-title", video.title || `Video ${video.videoId}`));
+    let isSong = /^sp:/.test(video.videoId);  // şarkı sonucu: videoId "sp:<id>", başlık "Sanatçı – Şarkı"
+    head.appendChild(dictElement("span", "dict-video-title", isSong ? "♪ " + (video.title || "Şarkı") : (video.title || `Video ${video.videoId}`)));
     head.appendChild(dictElement("span", "saved-video-count", `${video.count} kez`));
     group.appendChild(head);
 

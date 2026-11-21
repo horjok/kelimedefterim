@@ -41,6 +41,21 @@ def save_cache(lang="en"):
     storage.merge_write(languages.storage_name(lang, CACHE_FILE), cache_for(lang))
 
 
+def forget(video_id, lang="en"):
+    """Videonun kayıtlı gramer analizini bellekten ve depodan siler (şarkının sözü değişince eski analiz kalmasın).
+    save_cache birleştirerek yazdığı için anahtarı yalnızca bellekten silmek yetmez: depo yeniden yazılır."""
+    with cache_lock:
+        cache = cache_for(lang)
+        name = languages.storage_name(lang, CACHE_FILE)
+        stored = storage.read(name, {})
+        stored = stored if isinstance(stored, dict) else {}
+        if cache.pop(video_id, None) is None and video_id not in stored:
+            return
+        stored.pop(video_id, None)
+        stored.update(cache)  # bellekteki öteki analizler korunur
+        storage.write(name, stored)
+
+
 # ===== İstem =====
 
 PROMPT = """You are an English grammar teacher for Turkish-speaking learners (around B1 level).
