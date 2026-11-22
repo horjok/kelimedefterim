@@ -139,6 +139,9 @@ function gramerRenderList() {
 function gramerShowBrowse() {
     gramerOpenKey = "";
     gramerRequest++;
+    if (typeof timelineHide === "function") {
+        timelineHide();
+    }
     document.getElementById("grLesson").hidden = true;
     document.getElementById("grBrowse").hidden = false;
     gramerRenderList();
@@ -348,6 +351,13 @@ function gramerCheckQuiz() {
 
 function gramerRoute() {
     let key = decodeURIComponent(location.hash.slice(1));
+    // Zaman çizgisi (zamanlar.js; yalnızca İngilizce): gramer.html#zaman-cizgisi
+    if (key === "zaman-cizgisi" && typeof timelineOpen === "function" && timelineOpen()) {
+        return;
+    }
+    if (typeof timelineHide === "function") {
+        timelineHide();
+    }
     if (key && gramerFind(key)) {
         gramerOpen(key);
     } else {

@@ -241,6 +241,15 @@ def gemini_answer(prompt):
                          {"sub": "", "rule": "Örneksiz kural atılır.", "example": "", "tr": ""}],
                 "signals": [], "mistakes": [{"wrong": "Ich helfe den Mann.", "right": "Ich helfe dem Mann.", "why": "helfen Dativ ister."}] * 3,
                 "compare": "", "tip": "İpucu."}
+    if "in all twelve tenses" in prompt:
+        sentence = re.search(r'Sentence: "(.+?)"', prompt).group(1)
+        keys = re.search(r"in this order: (.+)\.", prompt).group(1).split(", ")
+        rows = [{"key": key, "text": f"{sentence} ({key})", "verb": key.split("-")[0], "tr": f"Türkçesi {n}",
+                 "natural": key != "present-continuous", "note": "not" if key == "present-continuous" else ""}
+                for n, key in enumerate(keys)]
+        if "EKSIK" in sentence:          # model bir zamanı atlarsa yanıt reddedilir
+            rows = rows[1:]
+        return {"detected": "present-simple", "tenses": rows}
     if '"questions"' in prompt:
         choice = [{"type": "choice", "prompt": f"Ich helfe _____ Mann {n}.", "options": ["dem", "den", "der", "des"],
                    "answer": "dem", "explanation": "Dativ."} for n in range(5)]

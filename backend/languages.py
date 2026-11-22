@@ -20,7 +20,7 @@ LANGUAGES = {
         "transcript": ["en", "en-US", "en-GB", "en-CA", "en-AU"],  # YouTube altyazı dilleri, tercih sırasıyla
         "tts": "en-US",                          # tarayıcının sesli okuma dili
         "translate": "en",                       # Google çevirisinde kaynak dil
-        "features": ["ipa", "phrasal", "ielts", "grammar", "wordbank", "topics"],
+        "features": ["ipa", "phrasal", "ielts", "grammar", "wordbank", "topics", "tenses"],
     },
     # İspanyolca (20 Kasım 2026, adım 2: çekirdek). Telaffuz İspanya aksanı (θ, ʝ), dil paketi backend/spanish.py.
     # Adım 3 (20 Kasım 2026): gramer müfredatı (web/data/gramer-es.json), video gramer modu ve Pekiştir (A1–C2).

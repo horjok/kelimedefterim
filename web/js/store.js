@@ -196,6 +196,34 @@ function savedStreak() {
     return streak;
 }
 
+// ===== Zaman çizgisi tekrarı (gramer.html#zaman-cizgisi, zamanlar.js; Bugün sayfası da okur) =====
+// localStorage "zaman:boxes": { "present-perfect": { box, due, right, wrong, seen: [soru id], at }, ... }
+// Kartlarla aynı Leitner aralıkları (SAVED_INTERVALS). Yalnızca İngilizce ("tenses" özelliği).
+const TENSE_BOX_KEY = "zaman:boxes";
+const TENSE_COUNT = 12;
+
+function tenseBoxes() {
+    try {
+        let value = JSON.parse(localStorage.getItem(langKey(TENSE_BOX_KEY)));
+        return value && typeof value === "object" ? value : {};
+    } catch (error) {
+        return {};
+    }
+}
+
+function tenseSaveBoxes(boxes) {
+    try {
+        localStorage.setItem(langKey(TENSE_BOX_KEY), JSON.stringify(boxes));
+    } catch (error) { }
+}
+
+// { due: zamanı gelen zaman sayısı, started: çalışılmaya başlanan zaman sayısı }
+function tenseDueSummary(now) {
+    let boxes = tenseBoxes();
+    let keys = Object.keys(boxes);
+    return { due: keys.filter((key) => (boxes[key].due || 0) <= now).length, started: keys.length };
+}
+
 // Şarkıdan kaydedilen kelimenin videoId'si "sp:<Spotify parça id>" olur (video.js şarkı modu)
 function savedIsSong(entry) {
     return /^sp:/.test(entry.videoId);

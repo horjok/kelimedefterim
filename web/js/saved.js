@@ -792,10 +792,25 @@ function renderTodayIelts() {
     box.hidden = false;
 }
 
+// Zaman çizgisi tekrarı (zamanlar.js; kutular store.js tenseBoxes): bekleyen zaman sayısı ya da yeni zamanlar
+function renderTodayTenses(now) {
+    let box = document.getElementById("todayTenses");
+    if (!box || !langHas("tenses")) {
+        return;
+    }
+    let summary = tenseDueSummary(now);
+    let text = summary.due > 0 ? `${summary.due} zamanın tekrarı geldi · çalış →`
+        : summary.started < TENSE_COUNT ? `${summary.started} / ${TENSE_COUNT} zaman · yeni zamanlarla devam et →`
+            : "bugünlük tekrar yok · çizgiyi aç →";
+    box.replaceChildren(savedElement("span", "today-ielts-title", "Zaman tekrarı"), savedElement("span", "saved-video-count", text));
+    box.hidden = false;
+}
+
 if (document.getElementById("todayHero")) {
     let all = savedAll();
     let now = Date.now();
     renderTodayIelts();
+    renderTodayTenses(now);
     renderTodayHero(all, now);
     renderTodayWord(all);
     renderTodayVideos(all);

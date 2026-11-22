@@ -25,7 +25,7 @@ from urllib.error import HTTPError
 
 from flask import Flask, Response, abort, g, jsonify, request, send_from_directory
 
-from . import grammar as grammar_module, ielts, languages, lessons, songs, synonyms, wordbank
+from . import grammar as grammar_module, ielts, languages, lessons, songs, synonyms, tenses, wordbank
 from .config import APP_PASSWORD, APP_PUBLIC, ON_VERCEL, WEB_DIR
 from .gemini import GeminiError
 from .grammar import GrammarError, analyze_grammar
@@ -101,7 +101,8 @@ def error(message, status):
 
 
 # Bu yollar dil kaydında ilgili özellik yoksa kapalıdır (ör. İspanyolcada IELTS yok)
-FEATURE_PATHS = (("/api/grammar", "grammar"), ("/api/lesson", "grammar"), ("/api/wordbank", "wordbank"), ("/api/ielts", "ielts"))
+FEATURE_PATHS = (("/api/grammar", "grammar"), ("/api/lesson", "grammar"), ("/api/wordbank", "wordbank"), ("/api/ielts", "ielts"),
+                 ("/api/tenses", "tenses"))
 
 
 @app.before_request
@@ -408,6 +409,20 @@ def lesson():
 def lesson_quiz():
     """Konunun alıştırması: {"topic": anahtar}."""
     return ielts_call(lambda: lessons.make_quiz(str(body_value("topic")), g.lang))
+
+
+# ===== Zaman çizgisi: cümle dönüştürücü (yalnızca İngilizce) =====
+
+@app.post("/api/tenses")
+def tense_convert():
+    """Cümlenin 12 zamandaki hâlleri: {"sentence": metin, "ai": false}. Önce kurallar (anında);
+    kural çözemezse {"supported": false, "reason"} döner. "ai": true → Gemini (önbellekli)."""
+    sentence = str(body_value("sentence"))[:400]
+    if not sentence.strip():
+        return error("Dönüştürülecek bir cümle yaz.", 400)
+    if body_value("ai", False) is True:
+        return ielts_call(lambda: tenses.convert_ai(sentence))
+    return jsonify(tenses.convert(sentence))
 
 
 # ===== Eş anlamlılar (Kartlar, Kelimeler, Sözlük) =====

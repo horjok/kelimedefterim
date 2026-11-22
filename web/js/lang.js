@@ -14,7 +14,7 @@ const LANG_DEFAULT = "en";
 const LANG_INFO = {
     // nameOf / nameOfAcc: "Bunun İngilizcesi", "İngilizcesini yaz" gibi ekli biçimler (ünlü uyumu dile göre)
     en: { name: "İngilizce", nameOf: "İngilizcesi", nameOfAcc: "İngilizcesini", native: "English", tts: "en-US",
-        features: ["ipa", "phrasal", "ielts", "grammar", "wordbank", "topics"] },
+        features: ["ipa", "phrasal", "ielts", "grammar", "wordbank", "topics", "tenses"] },
     // İspanyolca: video, dikte, kelimeler, kartlar, sözlük, gramer, Pekiştir (A1–C2 + konulu listeler). IELTS yok.
     es: { name: "İspanyolca", nameOf: "İspanyolcası", nameOfAcc: "İspanyolcasını", native: "Español", tts: "es-ES",
         features: ["ipa", "grammar", "wordbank", "topics"] },

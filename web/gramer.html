@@ -33,6 +33,16 @@
 
             <!-- Konu listesi -->
             <div id="grBrowse">
+                <!-- Zaman çizgisi girişi (yalnızca İngilizce; zamanlar.js gösterir) -->
+                <a class="panel tl-entry" id="tlEntry" href="#zaman-cizgisi" hidden>
+                    <span class="tl-entry-shapes" aria-hidden="true"><i class="tl-simple"></i><i class="tl-continuous"></i><i class="tl-perfect"></i><i class="tl-perfect-continuous"></i></span>
+                    <span class="tl-entry-text">
+                        <span class="tl-entry-title">Zaman çizgisi: 12 zaman tek çizgide</span>
+                        <span class="tl-entry-desc">Yapılar, ayırt etme ipuçları, günlük tekrar ve cümle dönüştürücü.</span>
+                        <span class="tl-entry-due" id="tlEntryDue"></span>
+                    </span>
+                    <span class="tl-entry-go" aria-hidden="true">→</span>
+                </a>
                 <article class="panel">
                     <div class="gr-tools">
                         <input type="text" id="grSearch" placeholder="Konu ara: tense, modal, koşul, artikel…" aria-label="Konu ara" autocomplete="off">
@@ -98,6 +108,50 @@
                     </div>
                 </article>
             </div>
+
+            <!-- Zaman çizgisi (gramer.html#zaman-cizgisi, zamanlar.js) -->
+            <div id="grTimeline" hidden>
+                <div class="gr-nav">
+                    <button type="button" class="mini" id="tlBack">← Konulara dön</button>
+                </div>
+
+                <article class="panel">
+                    <h3>Zaman çizgisi</h3>
+                    <p class="section-hint">Sütunlar zamanı (geçmiş, şimdi, gelecek), satırlar görünüşü gösterir. Her görünüşün bir şekli var: nokta, dalga, ok, dalgalı ok. Bir zamana dokun: kalıbı, kullanımı ve karıştırıldığı zamanlar açılır.</p>
+                    <div class="tl-board" id="tlBoard" role="group" aria-label="Zamanlar"></div>
+                    <div class="tl-detail" id="tlDetail" hidden></div>
+                </article>
+
+                <article class="panel" id="tlPractice">
+                    <h3>Günlük tekrar</h3>
+                    <p class="transcript-hint" id="tlPracticeStatus"></p>
+                    <div id="tlPracticeArea"></div>
+                    <p class="lab-note">Her zaman bir kutuda durur: doğru bildikçe tekrar aralığı uzar (1, 3, 7, 14, 30 gün), yanlışta başa döner. Günde en çok 3 yeni zaman gelir; sorular karışık sorulur ki zamanları birbirinden ayırmayı öğren.</p>
+                </article>
+
+                <article class="panel" id="tlConvert">
+                    <h3>Cümle dönüştürücü</h3>
+                    <p class="section-hint">Bir İngilizce cümle yaz; on iki zamandaki hâllerini gör. Basit cümleler kurallarla anında çevrilir, kuralların çözemediğini Gemini dönüştürür.</p>
+                    <form class="tl-convert-form" id="tlConvertForm">
+                        <input type="text" id="tlSentence" maxlength="200" placeholder="Ör. She drinks coffee every morning." aria-label="İngilizce cümle" autocomplete="off" spellcheck="false">
+                        <button type="submit" id="tlConvertGo">Dönüştür</button>
+                    </form>
+                    <p class="tl-samples" id="tlSamples"><span class="lab-note">Örnek:</span></p>
+                    <p class="transcript-hint" id="tlConvertStatus"></p>
+                    <div class="tl-convert-tools">
+                        <div class="segmented" id="tlPolarity" role="group" aria-label="Cümle türü" hidden>
+                            <button type="button" data-polarity="pos" aria-pressed="true">Olumlu</button>
+                            <button type="button" data-polarity="neg" aria-pressed="false">Olumsuz</button>
+                            <button type="button" data-polarity="q" aria-pressed="false">Soru</button>
+                        </div>
+                        <button type="button" class="mini" id="tlTranslate" hidden>Türkçesini göster</button>
+                    </div>
+                    <ul class="ielts-list tl-notes" id="tlConvertNotes"></ul>
+                    <ul class="tl-conv-list" id="tlConvertRows"></ul>
+                    <div class="tl-convert-ai" id="tlConvertAi" hidden></div>
+                    <p class="lab-note tl-legend"><span class="tl-r-aux">yardımcı fiil</span> · <span class="tl-r-verb">fiil</span><span class="tl-r-suf">-ek</span> · <span class="tl-r-irr">düzensiz biçim</span> · <span class="tl-r-neg">not</span></p>
+                </article>
+            </div>
         </section>
     </main>
 </div>
@@ -105,7 +159,9 @@
 <script src="js/helpers.js"></script>
 <script src="js/lang.js"></script>
 <script src="js/course.js"></script>
+<script src="js/store.js"></script>
 <script src="js/quiz.js"></script>
 <script src="js/gramer.js"></script>
+<script src="js/zamanlar.js"></script>
 </body>
 </html>

@@ -1,0 +1,332 @@
+{
+  "note": "Zaman çizgisi içeriği (gramer.html#zaman-cizgisi, js/zamanlar.js). Bütün açıklamalar, örnekler ve sorular özgün yazıldı; hiçbir kitaptan alınmadı. Soru metninde **…** soruya konu olan fiil öbeğidir.",
+  "tenses": [
+    {
+      "key": "present-simple", "en": "Present simple", "tr": "Geniş zaman", "level": "A1", "topic": "present-simple",
+      "turkish": "Geniş zaman: -r / -ar / -er (içerim)",
+      "core": "Her zaman olan şeyler: alışkanlık, genel gerçek, tarife.",
+      "pattern": { "pos": "özne + V1 (he/she/it → V1 + s)", "neg": "özne + do / does + not + V1", "q": "Do / Does + özne + V1?" },
+      "example": { "en": "She drinks coffee every morning.", "tr": "Her sabah kahve içer." },
+      "uses": [
+        { "rule": "Alışkanlık ve tekrar eden eylem", "en": "I take the bus to work.", "tr": "İşe otobüsle giderim." },
+        { "rule": "Genel gerçek", "en": "Water freezes at zero degrees.", "tr": "Su sıfır derecede donar." },
+        { "rule": "Tarife ve program", "en": "The train leaves at 7:15.", "tr": "Tren 7.15'te kalkar." }
+      ],
+      "signals": ["always", "usually", "often", "sometimes", "never", "every day", "on Mondays"],
+      "hook": "Çizgide aynı nokta her gün yeniden belirir: tekrar varsa geniş zaman.",
+      "warn": "he / she / it ile fiile -s gelir (she works). Türkçede bu ek olmadığı için en sık unutulan ektir."
+    },
+    {
+      "key": "present-continuous", "en": "Present continuous", "tr": "Şimdiki zaman", "level": "A1", "topic": "present-continuous",
+      "turkish": "Şimdiki zaman: -iyor (içiyorum)",
+      "core": "Şu an süren ya da bu aralar geçici olan eylem; kesinleşmiş yakın plan.",
+      "pattern": { "pos": "özne + am / is / are + V-ing", "neg": "özne + am / is / are + not + V-ing", "q": "Am / Is / Are + özne + V-ing?" },
+      "example": { "en": "She is drinking coffee now.", "tr": "Şu an kahve içiyor." },
+      "uses": [
+        { "rule": "Tam şu an süren eylem", "en": "Look! It's snowing.", "tr": "Bak! Kar yağıyor." },
+        { "rule": "Bu aralar geçici durum", "en": "I'm staying with my cousin this month.", "tr": "Bu ay kuzenimde kalıyorum." },
+        { "rule": "Kesinleşmiş yakın plan", "en": "We're meeting Elif tomorrow at six.", "tr": "Yarın altıda Elif'le buluşuyoruz." }
+      ],
+      "signals": ["now", "right now", "at the moment", "today", "this week", "Look!", "Listen!"],
+      "hook": "Dalga = şu an hareket var. Dalga bitince eylem de biter.",
+      "warn": "Durum fiilleri (know, like, want, believe, understand) genelde -ing almaz: I know (I'm knowing değil)."
+    },
+    {
+      "key": "present-perfect", "en": "Present perfect", "tr": "Yakın geçmiş (sonucu şimdide)", "level": "B1", "topic": "present-perfect",
+      "turkish": "Birebir karşılığı yok: çoğu zaman -di / -miş (bitirdim) ama sonucu şimdi önemli",
+      "core": "Geçmişte olmuş ama sonucu ya da etkisi şimdi önemli olan eylem; ne zaman olduğu söylenmez.",
+      "pattern": { "pos": "özne + have / has + V3", "neg": "özne + have / has + not + V3", "q": "Have / Has + özne + V3?" },
+      "example": { "en": "She has drunk three cups of coffee today.", "tr": "Bugün üç fincan kahve içti." },
+      "uses": [
+        { "rule": "Sonucu şimdi görülen eylem", "en": "I've lost my keys.", "tr": "Anahtarlarımı kaybettim (şu an yoklar)." },
+        { "rule": "Hayat deneyimi (ne zaman olduğu önemsiz)", "en": "Have you ever been to Mardin?", "tr": "Hiç Mardin'e gittin mi?" },
+        { "rule": "Geçmişte başlayıp hâlâ süren durum", "en": "We've known each other for ten years.", "tr": "On yıldır tanışıyoruz." }
+      ],
+      "signals": ["ever", "never", "already", "yet", "just", "so far", "for", "since", "recently"],
+      "hook": "Ok geçmişten şimdiye uzanır: ucu bugüne değiyorsa perfect.",
+      "warn": "Türkçede karşılığı yok: \"Anahtarımı kaybettim\" iki zamana da çevrilebilir. Belli bir geçmiş zaman (yesterday, in 2019, last week) söylüyorsan present perfect kullanılmaz."
+    },
+    {
+      "key": "present-perfect-continuous", "en": "Present perfect continuous", "tr": "Şimdiye kadar süren eylem", "level": "B1", "topic": "present-perfect-continuous",
+      "turkish": "… -dır -iyor (iki saattir içiyorum)",
+      "core": "Geçmişte başlayıp şimdiye kadar süren (ya da az önce biten) eylemin süresi ve süreci.",
+      "pattern": { "pos": "özne + have / has + been + V-ing", "neg": "özne + have / has + not + been + V-ing", "q": "Have / Has + özne + been + V-ing?" },
+      "example": { "en": "She has been drinking coffee since 8 a.m.", "tr": "Sabah sekizden beri kahve içiyor." },
+      "uses": [
+        { "rule": "Süre: ne kadar zamandır?", "en": "I've been studying for three hours.", "tr": "Üç saattir ders çalışıyorum." },
+        { "rule": "Az önce biten, izi görülen eylem", "en": "Your eyes are red. Have you been crying?", "tr": "Gözlerin kırmızı. Ağlıyor muydun?" },
+        { "rule": "How long ile soru", "en": "How long have you been waiting?", "tr": "Ne zamandır bekliyorsun?" }
+      ],
+      "signals": ["for", "since", "how long", "all day", "all morning", "lately", "recently"],
+      "hook": "Dalgalı ok: geçmişten bugüne süren hareket. Sorusu hep aynı: ne kadar zamandır?",
+      "warn": "Türkçedeki \"iki saattir bekliyorum\" İngilizcede present continuous değildir: I have been waiting for two hours."
+    },
+    {
+      "key": "past-simple", "en": "Past simple", "tr": "Görülen geçmiş", "level": "A2", "topic": "past-simple",
+      "turkish": "Görülen geçmiş: -di (içtim)",
+      "core": "Geçmişte belli bir zamanda olup bitmiş eylem; bugünle bağı yok.",
+      "pattern": { "pos": "özne + V2 (düzenli fiil: V1 + ed)", "neg": "özne + did + not + V1", "q": "Did + özne + V1?" },
+      "example": { "en": "She drank coffee yesterday morning.", "tr": "Dün sabah kahve içti." },
+      "uses": [
+        { "rule": "Belli zamanda bitmiş olay", "en": "We visited Cappadocia last summer.", "tr": "Geçen yaz Kapadokya'yı gezdik." },
+        { "rule": "Art arda olaylar (hikâye)", "en": "He opened the door, looked around and left.", "tr": "Kapıyı açtı, etrafa baktı ve çıktı." },
+        { "rule": "Geçmişteki alışkanlık", "en": "As a child, I walked to school every day.", "tr": "Çocukken her gün okula yürürdüm." }
+      ],
+      "signals": ["yesterday", "last week", "ago", "in 2019", "when I was a child", "then"],
+      "hook": "Geçmişte tek nokta: olay oldu ve bitti.",
+      "warn": "Olumsuz ve soruda fiil yalın hâline döner: Did you go? (Did you went değil)."
+    },
+    {
+      "key": "past-continuous", "en": "Past continuous", "tr": "Şimdiki zamanın hikâyesi", "level": "A2", "topic": "past-continuous",
+      "turkish": "-iyordu (içiyordum)",
+      "core": "Geçmişte belli bir anda sürmekte olan eylem; olaylara arka plan olur.",
+      "pattern": { "pos": "özne + was / were + V-ing", "neg": "özne + was / were + not + V-ing", "q": "Was / Were + özne + V-ing?" },
+      "example": { "en": "She was drinking coffee when I called.", "tr": "Aradığımda kahve içiyordu." },
+      "uses": [
+        { "rule": "Geçmişte belli bir anda süren eylem", "en": "At 8 p.m. I was having dinner.", "tr": "Akşam sekizde yemek yiyordum." },
+        { "rule": "Araya kısa bir olay girer (when + V2)", "en": "I was cooking when the lights went out.", "tr": "Elektrikler kesildiğinde yemek yapıyordum." },
+        { "rule": "Aynı anda süren iki eylem (while)", "en": "While she was reading, he was playing the guitar.", "tr": "O kitap okurken o da gitar çalıyordu." }
+      ],
+      "signals": ["while", "when", "at that moment", "at 8 p.m. yesterday", "all evening"],
+      "hook": "Geçmişteki dalga sahnenin arka planıdır; kısa olay (past simple) dalgayı keser.",
+      "warn": "En sık kalıp: süren eylem past continuous, araya giren kısa olay past simple (I was sleeping when the phone rang)."
+    },
+    {
+      "key": "past-perfect", "en": "Past perfect", "tr": "Miş'li geçmişin hikâyesi", "level": "B1", "topic": "past-perfect",
+      "turkish": "-mişti (içmiştim)",
+      "core": "Geçmişteki bir andan da önce olmuş eylem: geçmişin geçmişi.",
+      "pattern": { "pos": "özne + had + V3", "neg": "özne + had + not + V3", "q": "Had + özne + V3?" },
+      "example": { "en": "She had already drunk her coffee when I arrived.", "tr": "Ben vardığımda kahvesini çoktan içmişti." },
+      "uses": [
+        { "rule": "Geçmişteki bir olaydan önce olan", "en": "When we arrived, the film had already started.", "tr": "Vardığımızda film çoktan başlamıştı." },
+        { "rule": "Geçmişteki bir durumun sebebi", "en": "She was tired because she had worked all night.", "tr": "Bütün gece çalışmış olduğu için yorgundu." },
+        { "rule": "O zamana kadarki deneyim", "en": "I had never seen snow before I moved to Erzurum.", "tr": "Erzurum'a taşınmadan önce hiç kar görmemiştim." }
+      ],
+      "signals": ["already", "before", "by the time", "after", "never … before", "when"],
+      "hook": "Geçmişte iki nokta: önce olan had + V3, sonra olan V2.",
+      "warn": "Olaylar sırasıyla anlatılıyorsa past perfect gerekmez: I closed the window and left."
+    },
+    {
+      "key": "past-perfect-continuous", "en": "Past perfect continuous", "tr": "Geçmişte bir ana kadar süren eylem", "level": "B2", "topic": "past-perfect-continuous",
+      "turkish": "… -dır -iyordu (iki saattir içiyordum)",
+      "core": "Geçmişteki bir ana kadar bir süredir devam etmekte olan eylem.",
+      "pattern": { "pos": "özne + had been + V-ing", "neg": "özne + had + not + been + V-ing", "q": "Had + özne + been + V-ing?" },
+      "example": { "en": "She had been drinking coffee for an hour when I arrived.", "tr": "Ben vardığımda bir saattir kahve içiyordu." },
+      "uses": [
+        { "rule": "Geçmişteki bir ana kadarki süre", "en": "She had been working there for five years when she got promoted.", "tr": "Terfi aldığında beş yıldır orada çalışıyordu." },
+        { "rule": "Geçmişteki bir sonucun sebebi", "en": "The ground was wet because it had been raining.", "tr": "Yağmur yağmış olduğu için yer ıslaktı." },
+        { "rule": "Yorgunluk, iz", "en": "They were exhausted. They had been walking all day.", "tr": "Bitkindiler. Bütün gün yürümüşlerdi." }
+      ],
+      "signals": ["for", "since", "how long", "all day", "by the time", "when"],
+      "hook": "Geçmişte biten dalgalı ok: geçmişteki o ana kadar ne kadar süredir?",
+      "warn": "Türkçede çoğu zaman \"-iyordu\" diye çevrilir. Geçmişteki bir ana kadar süre (for, since) varsa bu zamanı seç."
+    },
+    {
+      "key": "future-simple", "en": "Future simple (will)", "tr": "Gelecek zaman", "level": "A2", "topic": "future-will",
+      "turkish": "Gelecek zaman: -ecek (içeceğim); anlık kararda -eyim (içeyim)",
+      "core": "Konuşurken verilen karar, tahmin, söz ve teklif.",
+      "pattern": { "pos": "özne + will + V1", "neg": "özne + will not (won't) + V1", "q": "Will + özne + V1?" },
+      "example": { "en": "She will drink coffee after the meeting.", "tr": "Toplantıdan sonra kahve içecek." },
+      "uses": [
+        { "rule": "Konuşurken verilen karar", "en": "It's cold. I'll close the window.", "tr": "Hava soğuk. Pencereyi kapatayım." },
+        { "rule": "Tahmin ve düşünce", "en": "I think it will rain tomorrow.", "tr": "Bence yarın yağmur yağacak." },
+        { "rule": "Söz ve teklif", "en": "I'll help you with your bags.", "tr": "Çantalarını taşımana yardım ederim." }
+      ],
+      "signals": ["tomorrow", "next week", "I think", "probably", "soon", "one day"],
+      "hook": "Gelecekte tek nokta; karar şimdi, konuşurken veriliyor.",
+      "warn": "Önceden yapılmış plan için genelde be going to ya da present continuous kullanılır: I'm seeing the dentist tomorrow."
+    },
+    {
+      "key": "future-continuous", "en": "Future continuous", "tr": "Gelecekte süren eylem", "level": "B2", "topic": "future-continuous",
+      "turkish": "-iyor olacak (içiyor olacağım)",
+      "core": "Gelecekte belli bir anda sürmekte olacak eylem.",
+      "pattern": { "pos": "özne + will be + V-ing", "neg": "özne + will not be + V-ing", "q": "Will + özne + be + V-ing?" },
+      "example": { "en": "This time tomorrow she will be drinking coffee in Rome.", "tr": "Yarın bu saatte Roma'da kahve içiyor olacak." },
+      "uses": [
+        { "rule": "Gelecekte belli bir anda süren eylem", "en": "This time tomorrow I'll be lying on the beach.", "tr": "Yarın bu saatte kumsalda uzanıyor olacağım." },
+        { "rule": "Olağan akışta olacak şey", "en": "I'll be passing the bakery, so I can get bread.", "tr": "Fırının önünden geçiyor olacağım, ekmek alabilirim." },
+        { "rule": "Kibar soru (planı sormak)", "en": "Will you be using the car tonight?", "tr": "Bu akşam arabayı kullanıyor olacak mısın?" }
+      ],
+      "signals": ["this time tomorrow", "at 9 p.m. tonight", "all day tomorrow", "in two hours"],
+      "hook": "Gelecekteki dalga: o an geldiğinde eylem zaten sürüyor olacak.",
+      "warn": "Belli bir gelecek an (this time next week, at ten tomorrow) yoksa çoğu zaman will yeter."
+    },
+    {
+      "key": "future-perfect", "en": "Future perfect", "tr": "Gelecekte bitmiş olacak eylem", "level": "B2", "topic": "future-perfect",
+      "turkish": "-miş olacak (içmiş olacağım)",
+      "core": "Gelecekteki bir andan önce bitmiş olacak eylem.",
+      "pattern": { "pos": "özne + will have + V3", "neg": "özne + will not have + V3", "q": "Will + özne + have + V3?" },
+      "example": { "en": "By noon she will have drunk four cups of coffee.", "tr": "Öğlene kadar dört fincan kahve içmiş olacak." },
+      "uses": [
+        { "rule": "Gelecekteki bir ana kadar bitmiş olacak", "en": "By 2030, I'll have finished university.", "tr": "2030'a kadar üniversiteyi bitirmiş olacağım." },
+        { "rule": "by the time ile", "en": "By the time you arrive, we'll have cooked dinner.", "tr": "Sen gelene kadar yemeği pişirmiş olacağız." },
+        { "rule": "O ana kadarki sayı", "en": "By Friday she'll have read three books.", "tr": "Cumaya kadar üç kitap okumuş olacak." }
+      ],
+      "signals": ["by tomorrow", "by 2030", "by the time", "before", "by then"],
+      "hook": "Gelecekteki bir noktaya uzanan ok: by + zaman gördüğünde o ana kadar bitmiş olacak.",
+      "warn": "by the time / when'den sonraki yan cümlede will kullanılmaz: by the time you arrive (will arrive değil)."
+    },
+    {
+      "key": "future-perfect-continuous", "en": "Future perfect continuous", "tr": "Gelecekte bir ana kadar süren eylem", "level": "B2", "topic": "future-perfect",
+      "turkish": "… -dır -iyor olacak (iki saattir içiyor olacağım)",
+      "core": "Gelecekteki bir ana gelindiğinde ne kadar süredir devam ediyor olacağını anlatır.",
+      "pattern": { "pos": "özne + will have been + V-ing", "neg": "özne + will not have been + V-ing", "q": "Will + özne + have been + V-ing?" },
+      "example": { "en": "At ten she will have been drinking coffee for two hours.", "tr": "Saat onda iki saattir kahve içiyor olacak." },
+      "uses": [
+        { "rule": "Gelecekteki bir ana kadarki süre", "en": "Next month I'll have been working here for ten years.", "tr": "Gelecek ay burada on yıldır çalışıyor olacağım." },
+        { "rule": "Gelecekteki bir durumun sebebi", "en": "By 5 p.m. she'll have been driving for eight hours, so she'll be tired.", "tr": "Saat beşte sekiz saattir araba kullanıyor olacak, bu yüzden yorgun olacak." },
+        { "rule": "Yıl dönümü gibi süreler", "en": "In May we'll have been living together for a year.", "tr": "Mayısta bir yıldır birlikte yaşıyor olacağız." }
+      ],
+      "signals": ["by … for", "by the time … for", "next year … for"],
+      "hook": "Gelecekte biten dalgalı ok: o ana gelince ne kadar zamandır sürüyor olacak?",
+      "warn": "Az kullanılır. Görmek için cümlede hem gelecekteki bir an hem de bir süre (for) olur."
+    }
+  ],
+  "pairs": [
+    { "a": "present-simple", "b": "present-continuous", "ask": "Her zaman mı oluyor, yoksa şu an / bu aralar mı?",
+      "tip": "Kalıcı ve tekrar eden şey geniş zaman; şu an süren ya da geçici olan şimdiki zaman.",
+      "examples": [{ "tense": "present-simple", "en": "I work in a bank.", "tr": "Bankada çalışırım (işim bu)." }, { "tense": "present-continuous", "en": "I'm working from home this week.", "tr": "Bu hafta evden çalışıyorum." }] },
+    { "a": "past-simple", "b": "present-perfect", "ask": "Ne zaman olduğu belli ve bitmiş bir zaman mı, yoksa sonucu şimdi mi önemli?",
+      "tip": "yesterday, last year, in 2019 gibi bitmiş zaman varsa past simple; zaman yok ve etkisi bugünse present perfect.",
+      "examples": [{ "tense": "past-simple", "en": "I lost my phone yesterday.", "tr": "Dün telefonumu kaybettim." }, { "tense": "present-perfect", "en": "I've lost my phone, can I use yours?", "tr": "Telefonumu kaybettim, seninkini kullanabilir miyim?" }] },
+    { "a": "past-simple", "b": "past-continuous", "ask": "Kısa, bitmiş bir olay mı, yoksa o sırada süren arka plan mı?",
+      "tip": "Sahnedeki olay past simple, sahnenin arka planı past continuous.",
+      "examples": [{ "tense": "past-continuous", "en": "I was walking home", "tr": "Eve yürüyordum" }, { "tense": "past-simple", "en": "when it started to rain.", "tr": "yağmur başladığında." }] },
+    { "a": "present-perfect", "b": "present-perfect-continuous", "ask": "Sonuç ve sayı mı (kaç tane), yoksa süreç ve süre mi (ne kadar zamandır)?",
+      "tip": "Kaç tane / bitti mi → present perfect. Ne kadar zamandır / hâlâ sürüyor → present perfect continuous.",
+      "examples": [{ "tense": "present-perfect", "en": "I've written three emails.", "tr": "Üç e-posta yazdım." }, { "tense": "present-perfect-continuous", "en": "I've been writing emails all morning.", "tr": "Bütün sabah e-posta yazıyorum." }] },
+    { "a": "present-continuous", "b": "present-perfect-continuous", "ask": "Cümlede süre (for, since, how long) var mı?",
+      "tip": "Süre söylenince şimdiki zaman değil present perfect continuous: iki saattir bekliyorum = I've been waiting for two hours.",
+      "examples": [{ "tense": "present-continuous", "en": "I'm waiting for the bus.", "tr": "Otobüsü bekliyorum." }, { "tense": "present-perfect-continuous", "en": "I've been waiting for twenty minutes.", "tr": "Yirmi dakikadır bekliyorum." }] },
+    { "a": "past-simple", "b": "past-perfect", "ask": "Geçmişteki iki olaydan hangisi önce oldu?",
+      "tip": "Önce olan had + V3, sonra olan V2. Sıra cümlede zaten belliyse past simple yeter.",
+      "examples": [{ "tense": "past-perfect", "en": "When I arrived, the party had ended.", "tr": "Vardığımda parti bitmişti (kaçırdım)." }, { "tense": "past-simple", "en": "When I arrived, the party ended.", "tr": "Ben varınca parti bitti." }] },
+    { "a": "past-perfect", "b": "past-perfect-continuous", "ask": "Geçmişteki o ana kadar ne bitmişti mi, yoksa ne kadar süredir sürüyordu mu?",
+      "tip": "Bitmiş iş ve sayı past perfect; geçmişteki bir ana kadarki süre past perfect continuous.",
+      "examples": [{ "tense": "past-perfect", "en": "She had painted two rooms.", "tr": "İki oda boyamıştı." }, { "tense": "past-perfect-continuous", "en": "She had been painting for hours.", "tr": "Saatlerdir boya yapıyordu." }] },
+    { "a": "past-continuous", "b": "past-perfect-continuous", "ask": "Geçmişte o an sürüyor muydu, yoksa o ana kadar ne kadar süredir sürdüğü mü önemli?",
+      "tip": "O an süren → past continuous. Süre (for two hours) + geçmişteki an → past perfect continuous.",
+      "examples": [{ "tense": "past-continuous", "en": "I was sleeping when the phone rang.", "tr": "Telefon çaldığında uyuyordum." }, { "tense": "past-perfect-continuous", "en": "I had been sleeping for two hours when the phone rang.", "tr": "Telefon çaldığında iki saattir uyuyordum." }] },
+    { "a": "future-simple", "b": "present-continuous", "ask": "Karar şimdi mi veriliyor, yoksa önceden ayarlanmış bir plan mı?",
+      "tip": "Anlık karar, tahmin, söz → will. Takvime yazılmış, bileti alınmış plan → present continuous (ya da going to).",
+      "examples": [{ "tense": "future-simple", "en": "We're out of milk. I'll buy some.", "tr": "Süt bitmiş. Ben alayım." }, { "tense": "present-continuous", "en": "I'm flying to Rome on Friday.", "tr": "Cuma Roma'ya uçuyorum (bilet hazır)." }] },
+    { "a": "future-simple", "b": "future-continuous", "ask": "Gelecekte bir olay mı olacak, yoksa belli bir anda süren bir eylem mi?",
+      "tip": "Saat 9'da başlayacak → will start. Saat 9'da sürüyor olacak → will be doing.",
+      "examples": [{ "tense": "future-simple", "en": "The meeting will start at nine.", "tr": "Toplantı dokuzda başlayacak." }, { "tense": "future-continuous", "en": "At nine I'll be sitting in the meeting.", "tr": "Dokuzda toplantıda oturuyor olacağım." }] },
+    { "a": "future-simple", "b": "future-perfect", "ask": "O anda mı olacak, yoksa o ana kadar bitmiş mi olacak?",
+      "tip": "on Friday → will; by Friday → will have + V3.",
+      "examples": [{ "tense": "future-simple", "en": "We will paint the house on Friday.", "tr": "Evi cuma boyayacağız." }, { "tense": "future-perfect", "en": "We will have painted the house by Friday.", "tr": "Cumaya kadar evi boyamış olacağız." }] },
+    { "a": "future-perfect", "b": "future-perfect-continuous", "ask": "O ana kadar ne bitmiş olacak mı, yoksa ne kadar süredir sürüyor olacak mı?",
+      "tip": "Bitmiş iş ve sayı future perfect; süre (for) future perfect continuous.",
+      "examples": [{ "tense": "future-perfect", "en": "By noon I'll have written the essay.", "tr": "Öğlene kadar yazıyı yazmış olacağım." }, { "tense": "future-perfect-continuous", "en": "By noon I'll have been writing for four hours.", "tr": "Öğlen dört saattir yazıyor olacağım." }] }
+  ],
+  "questions": [
+    { "id": "ps1", "tense": "present-simple", "type": "place", "text": "My grandmother **walks** in the park every evening.", "why": "every evening her akşam tekrar eden bir alışkanlık; he/she ile fiile -s gelmiş." },
+    { "id": "ps2", "tense": "present-simple", "type": "place", "text": "The museum **opens** at nine on weekdays.", "why": "Tarife ve program geniş zamanla anlatılır." },
+    { "id": "ps3", "tense": "present-simple", "type": "gap", "text": "He ___ (not / eat) meat.", "answer": "doesn't eat", "why": "he ile olumsuzda does not + yalın fiil; -s does'a geçer, fiil yalın kalır." },
+    { "id": "ps4", "tense": "present-simple", "type": "gap", "text": "Cats ___ (sleep) a lot during the day.", "answer": "sleep", "why": "Genel gerçek; özne çoğul olduğu için fiil -s almaz." },
+    { "id": "ps5", "tense": "present-simple", "type": "gap", "text": "Where ___ your brother work?", "answer": "does", "why": "Geniş zamanın sorusu do/does ile kurulur; your brother = he olduğu için does." },
+    { "id": "ps6", "tense": "present-simple", "type": "meaning", "text": "Bu senin her günkü alışkanlığın.", "options": ["I drink tea in the morning.", "I'm drinking tea right now."], "answer": "I drink tea in the morning.", "why": "Alışkanlık geniş zamandır; şimdiki zaman yalnızca şu anı anlatır." },
+    { "id": "ps7", "tense": "present-simple", "type": "meaning", "text": "Genel bir gerçeği söylüyorsun.", "options": ["The sun rises in the east.", "The sun is rising in the east."], "answer": "The sun rises in the east.", "why": "Değişmeyen gerçekler geniş zamanla söylenir." },
+    { "id": "ps8", "tense": "present-simple", "type": "signal", "text": "She *usually* **goes** to work by bike.", "options": ["present-simple", "present-continuous", "present-perfect"], "answer": "present-simple", "why": "usually alışkanlık sinyalidir; geniş zaman." },
+
+    { "id": "pc1", "tense": "present-continuous", "type": "place", "text": "Be quiet, the baby **is sleeping**.", "why": "Tam şu an süren eylem: am/is/are + V-ing." },
+    { "id": "pc2", "tense": "present-continuous", "type": "place", "text": "This week I**'m working** from home.", "why": "this week: bu aralar geçici bir durum." },
+    { "id": "pc3", "tense": "present-continuous", "type": "gap", "text": "Listen! Someone ___ (knock) on the door.", "answer": "is knocking", "why": "Listen! şu an olan bir şeye dikkat çeker." },
+    { "id": "pc4", "tense": "present-continuous", "type": "gap", "text": "They ___ (not / watch) TV right now; they're reading.", "answer": "aren't watching", "why": "right now şu an; olumsuzu are not + V-ing." },
+    { "id": "pc5", "tense": "present-continuous", "type": "gap", "text": "Sorry, I don't ___ (understand) the question.", "answer": "understand", "why": "understand durum fiilidir: şu an olsa bile -ing almaz, geniş zamanla kullanılır." },
+    { "id": "pc6", "tense": "present-continuous", "type": "meaning", "text": "Bu yıl geçici olarak böyle; normalde başka şehirde yaşıyor.", "options": ["My brother is living in Ankara this year.", "My brother lives in Ankara."], "answer": "My brother is living in Ankara this year.", "why": "Geçici durum şimdiki zamanla; kalıcı durum geniş zamanla anlatılır." },
+    { "id": "pc7", "tense": "present-continuous", "type": "meaning", "text": "Cuma için bileti alınmış, kesinleşmiş bir planın var.", "options": ["I'm flying to Rome on Friday.", "I fly to Rome every Friday."], "answer": "I'm flying to Rome on Friday.", "why": "Kesinleşmiş yakın plan present continuous; her cuma = alışkanlık." },
+    { "id": "pc8", "tense": "present-continuous", "type": "signal", "text": "*At the moment* she **is cooking** dinner.", "options": ["present-continuous", "present-simple", "past-continuous"], "answer": "present-continuous", "why": "at the moment = şu anda." },
+
+    { "id": "pp1", "tense": "present-perfect", "type": "place", "text": "I**'ve already sent** the email.", "why": "already ve sonucu şimdide (e-posta gitti): have + V3." },
+    { "id": "pp2", "tense": "present-perfect", "type": "place", "text": "She **has visited** Japan three times.", "why": "Hayat deneyimi ve sayı; ne zaman olduğu söylenmiyor." },
+    { "id": "pp3", "tense": "present-perfect", "type": "gap", "text": "We ___ (live) here since 2015.", "answer": "have lived", "accept": ["have been living"], "why": "since 2015: geçmişte başlayıp hâlâ süren durum; live için present perfect doğal." },
+    { "id": "pp4", "tense": "present-perfect", "type": "gap", "text": "Have you ever ___ (try) sushi?", "answer": "tried", "why": "ever ile deneyim sorusu: have + V3." },
+    { "id": "pp5", "tense": "present-perfect", "type": "gap", "text": "He ___ (not / finish) his project yet.", "answer": "hasn't finished", "why": "yet olumsuz ve soruda present perfect ile gelir." },
+    { "id": "pp6", "tense": "present-perfect", "type": "meaning", "text": "Anahtarlar hâlâ kayıp; şu anki durumu anlatıyorsun.", "options": ["I've lost my keys.", "I lost my keys last week."], "answer": "I've lost my keys.", "why": "Sonuç şimdi önemli ve zaman söylenmiyor: present perfect." },
+    { "id": "pp7", "tense": "present-perfect", "type": "meaning", "text": "Bir hayat deneyimi; ne zaman olduğu önemli değil.", "options": ["I have seen that film.", "I saw that film on Saturday."], "answer": "I have seen that film.", "why": "on Saturday gibi belli zaman olunca past simple; deneyim present perfect." },
+    { "id": "pp8", "tense": "present-perfect", "type": "signal", "text": "Have you **finished** your homework *yet*?", "options": ["present-perfect", "past-simple", "present-continuous"], "answer": "present-perfect", "why": "yet, present perfect'in en tipik sinyalidir." },
+
+    { "id": "ppc1", "tense": "present-perfect-continuous", "type": "place", "text": "It **has been raining** since this morning.", "why": "since this morning: geçmişte başlayıp hâlâ süren eylem." },
+    { "id": "ppc2", "tense": "present-perfect-continuous", "type": "place", "text": "They**'ve been building** that bridge for two years.", "why": "for two years: süreç ve süre; hâlâ bitmedi." },
+    { "id": "ppc3", "tense": "present-perfect-continuous", "type": "gap", "text": "I ___ (wait) here for forty minutes!", "answer": "have been waiting", "why": "Türkçede \"kırk dakikadır bekliyorum\": süre + hâlâ sürüyor." },
+    { "id": "ppc4", "tense": "present-perfect-continuous", "type": "gap", "text": "How long has she ___ (learn) Korean?", "answer": "been learning", "why": "How long + has + özne + been + V-ing." },
+    { "id": "ppc5", "tense": "present-perfect-continuous", "type": "gap", "text": "Sorry I'm late. ___ you been waiting long?", "answer": "Have", "why": "Soru: Have/Has + özne + been + V-ing." },
+    { "id": "ppc6", "tense": "present-perfect-continuous", "type": "meaning", "text": "Süreyi vurguluyorsun: sabahtan beri yazıyorsun.", "options": ["I've been writing emails all morning.", "I've written five emails."], "answer": "I've been writing emails all morning.", "why": "Süre ve süreç → perfect continuous; sayı → present perfect." },
+    { "id": "ppc7", "tense": "present-perfect-continuous", "type": "meaning", "text": "İki saattir bekliyorsun.", "options": ["I've been waiting for two hours.", "I'm waiting for two hours."], "answer": "I've been waiting for two hours.", "why": "Süre söylenince şimdiki zaman kullanılmaz." },
+    { "id": "ppc8", "tense": "present-perfect-continuous", "type": "signal", "text": "We **have been talking** *for an hour*.", "options": ["present-perfect-continuous", "present-continuous", "past-simple"], "answer": "present-perfect-continuous", "why": "for + süre, şimdiye kadar süren eylem." },
+
+    { "id": "pa1", "tense": "past-simple", "type": "place", "text": "I **met** my best friend in 2012.", "why": "in 2012: belli, bitmiş bir geçmiş zaman." },
+    { "id": "pa2", "tense": "past-simple", "type": "place", "text": "She **called** me two hours ago.", "why": "ago geçmişte belli bir anı gösterir." },
+    { "id": "pa3", "tense": "past-simple", "type": "gap", "text": "We ___ (go) to the beach yesterday.", "answer": "went", "why": "yesterday: past simple; go düzensiz, V2 = went." },
+    { "id": "pa4", "tense": "past-simple", "type": "gap", "text": "I ___ (not / see) him at the party.", "answer": "didn't see", "why": "Olumsuz: did not + yalın fiil (didn't saw değil)." },
+    { "id": "pa5", "tense": "past-simple", "type": "gap", "text": "___ you enjoy the concert last night?", "answer": "Did", "why": "last night: past simple sorusu Did ile kurulur." },
+    { "id": "pa6", "tense": "past-simple", "type": "meaning", "text": "Belli bir geçmiş zamandan bahsediyorsun: dün. Hangisi doğru?", "options": ["I finished the report yesterday.", "I have finished the report yesterday."], "answer": "I finished the report yesterday.", "why": "yesterday gibi bitmiş zamanla present perfect kullanılmaz." },
+    { "id": "pa7", "tense": "past-simple", "type": "meaning", "text": "Olay bir kez oldu ve bitti; arka planda süren bir şey değil.", "options": ["The phone rang twice.", "The phone was ringing."], "answer": "The phone rang twice.", "why": "Bitmiş, sayılabilen olay past simple; süren arka plan past continuous." },
+    { "id": "pa8", "tense": "past-simple", "type": "signal", "text": "They **moved** to Bursa *three years ago*.", "options": ["past-simple", "present-perfect", "past-perfect"], "answer": "past-simple", "why": "ago her zaman past simple ile gelir." },
+
+    { "id": "pac1", "tense": "past-continuous", "type": "place", "text": "At midnight we **were** still **talking**.", "why": "Geçmişte belli bir anda (gece yarısı) süren eylem." },
+    { "id": "pac2", "tense": "past-continuous", "type": "place", "text": "It **was snowing** when we left the house.", "why": "Arka planda süren eylem past continuous; araya giren olay (left) past simple." },
+    { "id": "pac3", "tense": "past-continuous", "type": "gap", "text": "I ___ (drive) home when the accident happened.", "answer": "was driving", "why": "Kaza olduğunda süren eylem: was/were + V-ing." },
+    { "id": "pac4", "tense": "past-continuous", "type": "gap", "text": "What ___ you doing at ten last night?", "answer": "were", "why": "Geçmişte belli bir saatte ne yapıyordun: were + özne + V-ing." },
+    { "id": "pac5", "tense": "past-continuous", "type": "gap", "text": "While they ___ (play) football, it started to rain.", "answer": "were playing", "why": "while + süren eylem past continuous ile gelir." },
+    { "id": "pac6", "tense": "past-continuous", "type": "meaning", "text": "Film başladığında sen zaten yemek yiyordun.", "options": ["When the film started, I was eating.", "When the film started, I ate."], "answer": "When the film started, I was eating.", "why": "İkinci cümle \"film başlayınca yemeğe oturdum\" demek olur." },
+    { "id": "pac7", "tense": "past-continuous", "type": "meaning", "text": "Saat yedide parkta koşmaktaydın (yedide başlamadın, sürüyordu).", "options": ["At seven o'clock she was jogging in the park.", "At seven o'clock she jogged in the park."], "answer": "At seven o'clock she was jogging in the park.", "why": "Belli bir anda süren eylem past continuous; past simple o saatte yapıldığını söyler." },
+    { "id": "pac8", "tense": "past-continuous", "type": "signal", "text": "*While* I **was waiting** for the bus, I read the news.", "options": ["past-continuous", "past-simple", "present-perfect-continuous"], "answer": "past-continuous", "why": "while süren eylemi işaret eder." },
+
+    { "id": "ppf1", "tense": "past-perfect", "type": "place", "text": "By the time I got to the station, the train **had left**.", "why": "Tren, benim varmamdan önce gitmişti: geçmişin geçmişi." },
+    { "id": "ppf2", "tense": "past-perfect", "type": "place", "text": "He **had** never **flown** before that trip.", "why": "O yolculuğa (geçmişteki bir an) kadarki deneyim: had + V3." },
+    { "id": "ppf3", "tense": "past-perfect", "type": "gap", "text": "When I got home, my sister ___ (already / eat).", "answer": "had already eaten", "why": "Kız kardeşin yemeği, benim eve gelmemden önce yemişti." },
+    { "id": "ppf4", "tense": "past-perfect", "type": "gap", "text": "I couldn't pay because I ___ (forget) my wallet.", "answer": "had forgotten", "why": "Ödeyemediğim andan önce olan sebep: had + V3." },
+    { "id": "ppf5", "tense": "past-perfect", "type": "gap", "text": "___ you ever met him before the meeting?", "answer": "Had", "why": "Geçmişteki bir ana (toplantı) kadarki deneyim: Had + özne + V3." },
+    { "id": "ppf6", "tense": "past-perfect", "type": "meaning", "text": "Sen geldiğinde parti çoktan bitmişti, kaçırdın.", "options": ["When I arrived, the party had ended.", "When I arrived, the party ended."], "answer": "When I arrived, the party had ended.", "why": "İkinci cümle \"ben gelince parti bitti\" anlamına gelir." },
+    { "id": "ppf7", "tense": "past-perfect", "type": "meaning", "text": "Kitabı daha önce okuduğun için filmden keyif almadın.", "options": ["I didn't enjoy the film because I had read the book.", "I didn't enjoy the film because I was reading the book."], "answer": "I didn't enjoy the film because I had read the book.", "why": "Okuma işi filmden önce bitmişti: past perfect." },
+    { "id": "ppf8", "tense": "past-perfect", "type": "signal", "text": "*By the time* we arrived, they **had finished** dinner.", "options": ["past-perfect", "past-simple", "present-perfect"], "answer": "past-perfect", "why": "by the time + geçmiş → o andan önce bitmiş olan past perfect." },
+
+    { "id": "ppfc1", "tense": "past-perfect-continuous", "type": "place", "text": "We **had been driving** for six hours when the car broke down.", "why": "Araba bozulduğu ana kadar altı saattir sürüyordu." },
+    { "id": "ppfc2", "tense": "past-perfect-continuous", "type": "place", "text": "His eyes were red because he **had been reading** all night.", "why": "Geçmişteki bir sonucun (kırmızı gözler) sebebi olan uzun süreç." },
+    { "id": "ppfc3", "tense": "past-perfect-continuous", "type": "gap", "text": "I ___ (wait) for an hour when she finally called.", "answer": "had been waiting", "why": "O aradığında bir saattir bekliyordum: geçmişteki ana kadarki süre." },
+    { "id": "ppfc4", "tense": "past-perfect-continuous", "type": "gap", "text": "How long had they ___ (live) there before they moved?", "answer": "been living", "why": "How long + had + özne + been + V-ing." },
+    { "id": "ppfc5", "tense": "past-perfect-continuous", "type": "gap", "text": "She was out of breath because she ___ (run).", "answer": "had been running", "why": "Nefes nefese olmasının sebebi, o ana kadar süren koşu." },
+    { "id": "ppfc6", "tense": "past-perfect-continuous", "type": "meaning", "text": "Sonuç değil süre önemli: saatlerdir duvarı boyuyordu.", "options": ["He had been painting the wall for hours.", "He had painted the wall twice."], "answer": "He had been painting the wall for hours.", "why": "Süre → perfect continuous; sayı ve bitmiş iş → past perfect." },
+    { "id": "ppfc7", "tense": "past-perfect-continuous", "type": "meaning", "text": "Telefon çaldığında iki saattir uyuyordun.", "options": ["I had been sleeping for two hours when the phone rang.", "I was sleeping for two hours when the phone rang."], "answer": "I had been sleeping for two hours when the phone rang.", "why": "Geçmişteki bir ana kadar süre söylenince past perfect continuous." },
+    { "id": "ppfc8", "tense": "past-perfect-continuous", "type": "signal", "text": "They **had been arguing** *for an hour* before the manager came in.", "options": ["past-perfect-continuous", "past-continuous", "present-perfect-continuous"], "answer": "past-perfect-continuous", "why": "for + süre + geçmişteki bir an (müdür girdiğinde)." },
+
+    { "id": "fs1", "tense": "future-simple", "type": "place", "text": "Don't worry, I**'ll call** you when I land.", "why": "Söz veriyorsun: will + V1 (when'den sonra will gelmez: when I land)." },
+    { "id": "fs2", "tense": "future-simple", "type": "place", "text": "I think robots **will do** most of the housework one day.", "why": "I think + tahmin: will." },
+    { "id": "fs3", "tense": "future-simple", "type": "gap", "text": "The phone is ringing. — I ___ (get) it!", "answer": "'ll get", "why": "Konuşurken verilen anlık karar: will." },
+    { "id": "fs4", "tense": "future-simple", "type": "gap", "text": "Don't tell her. She ___ (not / believe) you.", "answer": "won't believe", "why": "Tahmin; olumsuzu will not (won't) + V1." },
+    { "id": "fs5", "tense": "future-simple", "type": "gap", "text": "___ you help me move this table?", "answer": "Will", "why": "Rica: Will + özne + V1?" },
+    { "id": "fs6", "tense": "future-simple", "type": "meaning", "text": "Şimdi, konuşurken karar veriyorsun.", "options": ["Oh, we're out of milk. I'll buy some.", "Oh, we're out of milk. I'm buying some on Saturday."], "answer": "Oh, we're out of milk. I'll buy some.", "why": "Anlık karar will; önceden ayarlanmış plan present continuous." },
+    { "id": "fs7", "tense": "future-simple", "type": "meaning", "text": "Bir tahminde bulunuyorsun.", "options": ["I think she'll win the race.", "She's running in the race on Sunday."], "answer": "I think she'll win the race.", "why": "Tahmin will ile; ikinci cümle bir planı anlatır." },
+    { "id": "fs8", "tense": "future-simple", "type": "signal", "text": "*I think* the team **will win** tomorrow.", "options": ["future-simple", "present-continuous", "future-perfect"], "answer": "future-simple", "why": "I think / probably tahmin sinyalidir." },
+
+    { "id": "fc1", "tense": "future-continuous", "type": "place", "text": "At ten tomorrow morning I**'ll be taking** my exam.", "why": "Gelecekte belli bir anda süren eylem." },
+    { "id": "fc2", "tense": "future-continuous", "type": "place", "text": "Don't call at eight; we**'ll be having** dinner.", "why": "Saat sekizde yemek sürüyor olacak." },
+    { "id": "fc3", "tense": "future-continuous", "type": "gap", "text": "This time next week we ___ (fly) to Antalya.", "answer": "will be flying", "why": "this time next week: gelecekte belli bir anda süren eylem." },
+    { "id": "fc4", "tense": "future-continuous", "type": "gap", "text": "___ you be using the printer this afternoon?", "answer": "Will", "why": "Kibar plan sorusu: Will + özne + be + V-ing?" },
+    { "id": "fc5", "tense": "future-continuous", "type": "gap", "text": "At midnight I ___ (not / sleep); I'll be working.", "answer": "won't be sleeping", "why": "Gece yarısı sürüyor olmayacak: will not be + V-ing." },
+    { "id": "fc6", "tense": "future-continuous", "type": "meaning", "text": "Yarın saat 9'da toplantı sürüyor olacak, o yüzden telefona çıkamazsın.", "options": ["At 9 tomorrow I'll be sitting in a meeting.", "At 9 tomorrow I'll sit in a meeting."], "answer": "At 9 tomorrow I'll be sitting in a meeting.", "why": "O anda süren eylem future continuous." },
+    { "id": "fc7", "tense": "future-continuous", "type": "meaning", "text": "İki saat sonra sınırdan geçmekte olacaklar (o an yoldalar).", "options": ["In two hours they'll be crossing the border.", "In two hours they'll have crossed the border."], "answer": "In two hours they'll be crossing the border.", "why": "Süren eylem future continuous; ikinci cümle \"geçmiş olacaklar\" (bitmiş) demektir." },
+    { "id": "fc8", "tense": "future-continuous", "type": "signal", "text": "*This time tomorrow* I **will be driving** to Izmir.", "options": ["future-continuous", "future-simple", "present-continuous"], "answer": "future-continuous", "why": "this time tomorrow gelecekteki belli bir anı gösterir." },
+
+    { "id": "fp1", "tense": "future-perfect", "type": "place", "text": "The film **will have started** by the time we get there.", "why": "Biz varmadan önce başlamış olacak: will have + V3." },
+    { "id": "fp2", "tense": "future-perfect", "type": "place", "text": "By next June, they**'ll have lived** here for a decade.", "why": "by next June: gelecekteki bir ana kadar tamamlanmış süre (live durum fiili gibi davranır)." },
+    { "id": "fp3", "tense": "future-perfect", "type": "gap", "text": "By 6 p.m. I ___ (finish) all my work.", "answer": "will have finished", "why": "by 6 p.m.: o saate kadar bitmiş olacak." },
+    { "id": "fp4", "tense": "future-perfect", "type": "gap", "text": "By the end of the year, she ___ (save) enough money for a car.", "answer": "will have saved", "why": "by the end of the year: o ana kadar tamamlanmış iş." },
+    { "id": "fp5", "tense": "future-perfect", "type": "gap", "text": "___ you have finished the report by Monday?", "answer": "Will", "why": "Soru: Will + özne + have + V3?" },
+    { "id": "fp6", "tense": "future-perfect", "type": "meaning", "text": "Cuma gelmeden iş bitmiş olacak.", "options": ["By Friday, we will have painted the house.", "On Friday, we will paint the house."], "answer": "By Friday, we will have painted the house.", "why": "by + zaman future perfect; on Friday = o gün yapılacak." },
+    { "id": "fp7", "tense": "future-perfect", "type": "meaning", "text": "Önemli olan tamamlanmak, süre değil.", "options": ["By noon I'll have written the whole essay.", "By noon I'll have been writing for four hours."], "answer": "By noon I'll have written the whole essay.", "why": "Bitmiş iş future perfect; süre future perfect continuous." },
+    { "id": "fp8", "tense": "future-perfect", "type": "signal", "text": "*By the time* you wake up, I **will have left**.", "options": ["future-perfect", "future-simple", "past-perfect"], "answer": "future-perfect", "why": "by the time + şimdiki zaman yan cümlesi → ana cümle future perfect." },
+
+    { "id": "fpc1", "tense": "future-perfect-continuous", "type": "place", "text": "By July, I**'ll have been teaching** for twenty years.", "why": "Gelecekteki bir ana kadar ne kadar süredir: will have been + V-ing." },
+    { "id": "fpc2", "tense": "future-perfect-continuous", "type": "place", "text": "When she retires, she **will have been working** at the bank for 35 years.", "why": "Emekli olduğu ana kadar 35 yıldır çalışıyor olacak." },
+    { "id": "fpc3", "tense": "future-perfect-continuous", "type": "gap", "text": "By midnight, they ___ (dance) for six hours.", "answer": "will have been dancing", "why": "by midnight + for six hours: gelecekteki ana kadarki süre." },
+    { "id": "fpc4", "tense": "future-perfect-continuous", "type": "gap", "text": "Next year we ___ (live) in this flat for a decade.", "answer": "will have been living", "accept": ["will have lived"], "why": "Gelecek yıl on yıldır yaşıyor olacağız." },
+    { "id": "fpc5", "tense": "future-perfect-continuous", "type": "gap", "text": "How long will you ___ (study) English by the end of this course?", "answer": "have been studying", "why": "How long + will + özne + have been + V-ing." },
+    { "id": "fpc6", "tense": "future-perfect-continuous", "type": "meaning", "text": "Süreyi vurguluyorsun: akşam altıda kaç saattir çalışıyor olacak?", "options": ["At 6 p.m. she'll have been working for ten hours.", "At 6 p.m. she'll be working."], "answer": "At 6 p.m. she'll have been working for ten hours.", "why": "Süre (for ten hours) future perfect continuous ister." },
+    { "id": "fpc7", "tense": "future-perfect-continuous", "type": "meaning", "text": "Süre gelecekteki bir ana (haziran) kadar ölçülüyor.", "options": ["In June I'll have been studying here for two years.", "I've been studying here for two years."], "answer": "In June I'll have been studying here for two years.", "why": "Ölçü anı gelecekte olunca future perfect continuous; şimdiye kadar olunca present perfect continuous." },
+    { "id": "fpc8", "tense": "future-perfect-continuous", "type": "signal", "text": "*By 2030*, he **will have been running** the company *for a decade*.", "options": ["future-perfect-continuous", "future-perfect", "present-perfect-continuous"], "answer": "future-perfect-continuous", "why": "Gelecekteki an (by 2030) + süre (for a decade)." }
+  ]
+}
